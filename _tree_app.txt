@@ -1,0 +1,10 @@
+C:\Users\ichao\Documents\pedagogical_ai\app\__init__.py
+C:\Users\ichao\Documents\pedagogical_ai\app\ai\__init__.py
+C:\Users\ichao\Documents\pedagogical_ai\app\models\__init__.py
+C:\Users\ichao\Documents\pedagogical_ai\app\routes\main.py
+C:\Users\ichao\Documents\pedagogical_ai\app\routes\__init__.py
+C:\Users\ichao\Documents\pedagogical_ai\app\routes\__pycache__\main.cpython-314.pyc
+C:\Users\ichao\Documents\pedagogical_ai\app\routes\__pycache__\__init__.cpython-314.pyc
+C:\Users\ichao\Documents\pedagogical_ai\app\services\__init__.py
+C:\Users\ichao\Documents\pedagogical_ai\app\utils\__init__.py
+C:\Users\ichao\Documents\pedagogical_ai\app\__pycache__\__init__.cpython-314.pyc

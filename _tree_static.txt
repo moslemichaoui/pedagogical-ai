@@ -1,0 +1,2 @@
+C:\Users\ichao\Documents\pedagogical_ai\static\css\style.css
+C:\Users\ichao\Documents\pedagogical_ai\static\js\app.js
