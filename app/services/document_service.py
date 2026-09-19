@@ -74,6 +74,7 @@ class DocumentService:
                 subject=subject,
                 educational_level=educational_level,
                 language=language,
+                chapter=chapter,
                 created_at=datetime.utcnow(),
             )
             db.session.add(document)
@@ -152,14 +153,20 @@ class DocumentService:
         documents = Document.query.order_by(Document.id.desc()).all()
         results = []
         for document in documents:
+            suffix = Path(document.file_path).suffix
+            filename = f"{document.title}{suffix}"
             results.append({
                 'document_id': document.id,
                 'title': document.title,
-                'filename': Path(document.file_path).name,
+                'filename': filename,
+                'file_type': suffix.lstrip('.').upper() or None,
                 'source_type': document.source_type,
                 'subject': document.subject,
                 'educational_level': document.educational_level,
                 'language': document.language,
+                'chapter': document.chapter,
+                'created_at': document.created_at.isoformat() if document.created_at else None,
+                'processing_status': 'processed' if document.chunks else 'pending',
                 'number_of_chunks': len(document.chunks),
             })
         return results

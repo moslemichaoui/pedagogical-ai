@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}قاعدة المعرفة - Pedagogical AI{% endblock %}
+
+{% block content %}
+<div class="container py-4" dir="rtl" lang="ar">
+    <div class="d-flex justify-content-between flex-wrap align-items-center pb-3 mb-4 border-bottom">
+        <div>
+            <h1 class="h2 mb-2">قاعدة المعرفة</h1>
+            <p class="text-muted mb-0">أضف الكتب المدرسية والأدلة والوثائق المرجعية التي يمكن للنظام استخدامها لتحضير الدروس.</p>
+        </div>
+    </div>
+
+    <div id="uploadSuccess" class="alert alert-success d-none" role="alert"></div>
+    <div id="uploadError" class="alert alert-danger d-none" role="alert"></div>
+
+    <div class="card mb-4">
+        <div class="card-header"><h2 class="h5 mb-0">إضافة وثيقة</h2></div>
+        <div class="card-body">
+            <form id="documentUploadForm" enctype="multipart/form-data">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="file" class="form-label">الملف</label>
+                        <input class="form-control" id="file" name="file" type="file" accept=".pdf,.docx,.txt" required>
+                        <div class="form-text">الأنواع المدعومة: PDF، DOCX، TXT</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="subject" class="form-label">المادة</label>
+                        <select class="form-select" id="subject" name="subject">
+                            <option value="">اختر المادة</option>
+                            <option value="الإيقاظ العلمي">الإيقاظ العلمي</option>
+                            <option value="الرياضيات">الرياضيات</option>
+                            <option value="اللغة العربية">اللغة العربية</option>
+                            <option value="اللغة الفرنسية">اللغة الفرنسية</option>
+                            <option value="التربية الإسلامية">التربية الإسلامية</option>
+                            <option value="التربية المدنية">التربية المدنية</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="educational_level" class="form-label">المستوى الدراسي</label>
+                        <select class="form-select" id="educational_level" name="educational_level">
+                            <option value="">اختر المستوى</option>
+                            <option value="السنة الأولى ابتدائي">السنة الأولى ابتدائي</option>
+                            <option value="السنة الثانية ابتدائي">السنة الثانية ابتدائي</option>
+                            <option value="السنة الثالثة ابتدائي">السنة الثالثة ابتدائي</option>
+                            <option value="السنة الرابعة ابتدائي">السنة الرابعة ابتدائي</option>
+                            <option value="السنة الخامسة ابتدائي">السنة الخامسة ابتدائي</option>
+                            <option value="السنة السادسة ابتدائي">السنة السادسة ابتدائي</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="language" class="form-label">اللغة</label>
+                        <select class="form-select" id="language" name="language">
+                            <option value="ar" selected>العربية</option>
+                            <option value="fr">Français</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="source_type" class="form-label">نوع المصدر</label>
+                        <select class="form-select" id="source_type" name="source_type">
+                            <option value="teacher_upload" selected>وثيقة المعلّم</option>
+                            <option value="official">وثيقة رسمية</option>
+                            <option value="web">مرجع ويب موثوق</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="chapter" class="form-label">الفصل / الوحدة</label>
+                        <input class="form-control" id="chapter" name="chapter" type="text" placeholder="مثال: الوحدة الأولى">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button class="btn btn-primary" id="uploadButton" type="submit">
+                        <span class="spinner-border spinner-border-sm d-none" id="uploadSpinner" aria-hidden="true"></span>
+                        <span id="uploadButtonText">رفع الوثيقة</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">الوثائق المرجعية</h2>
+            <span class="badge text-bg-secondary" id="documentCount">0</span>
+        </div>
+        <div class="card-body p-0">
+            <div id="documentsLoading" class="text-center text-muted p-4">جاري تحميل الوثائق...</div>
+            <div class="table-responsive d-none" id="documentsTableWrapper">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>اسم الملف</th>
+                            <th>النوع</th>
+                            <th>المادة</th>
+                            <th>المستوى</th>
+                            <th>اللغة</th>
+                            <th>نوع المصدر</th>
+                            <th>الفصل / الوحدة</th>
+                            <th>تاريخ الإضافة</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="documentsTableBody"></tbody>
+                </table>
+            </div>
+            <div id="documentsEmpty" class="text-center text-muted p-4 d-none">لا توجد وثائق مرجعية بعد.</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    const sourceLabels = {
+        official: 'وثيقة رسمية',
+        teacher_upload: 'وثيقة المعلّم',
+        web: 'مرجع ويب موثوق'
+    };
+    const statusLabels = {
+        pending: 'قيد المعالجة',
+        processed: 'تمت المعالجة',
+        failed: 'فشل'
+    };
+
+    function escapeHtml(value) {
+        return $('<div>').text(value || '—').html();
+    }
+
+    function showMessage(selector, message) {
+        $('#uploadSuccess, #uploadError').addClass('d-none');
+        $(selector).text(message).removeClass('d-none');
+    }
+
+    function formatDate(value) {
+        if (!value) return '—';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ar-TN');
+    }
+
+    function renderDocuments(documents) {
+        const body = $('#documentsTableBody').empty();
+        $('#documentCount').text(documents.length);
+        $('#documentsLoading').addClass('d-none');
+
+        if (!documents.length) {
+            $('#documentsTableWrapper').addClass('d-none');
+            $('#documentsEmpty').removeClass('d-none');
+            return;
+        }
+
+        documents.forEach(function(document) {
+            const status = document.processing_status || 'pending';
+            const statusClass = status === 'processed' ? 'text-bg-success' :
+                (status === 'failed' ? 'text-bg-danger' : 'text-bg-warning');
+            body.append(`
+                <tr>
+                    <td>${escapeHtml(document.filename)}</td>
+                    <td>${escapeHtml(document.file_type)}</td>
+                    <td>${escapeHtml(document.subject)}</td>
+                    <td>${escapeHtml(document.educational_level)}</td>
+                    <td>${escapeHtml(document.language)}</td>
+                    <td>${escapeHtml(sourceLabels[document.source_type] || document.source_type)}</td>
+                    <td>${escapeHtml(document.chapter)}</td>
+                    <td>${escapeHtml(formatDate(document.created_at))}</td>
+                    <td><span class="badge ${statusClass}">${escapeHtml(statusLabels[status] || status)}</span></td>
+                </tr>
+            `);
+        });
+
+        $('#documentsEmpty').addClass('d-none');
+        $('#documentsTableWrapper').removeClass('d-none');
+    }
+
+    function loadDocuments() {
+        $('#documentsLoading').removeClass('d-none');
+        $.getJSON('/api/documents')
+            .done(function(response) {
+                renderDocuments(response.documents || []);
+            })
+            .fail(function(xhr) {
+                $('#documentsLoading').addClass('d-none');
+                showMessage('#uploadError', (xhr.responseJSON && xhr.responseJSON.message) || 'تعذر تحميل الوثائق.');
+            });
+    }
+
+    $('#documentUploadForm').on('submit', function(event) {
+        event.preventDefault();
+        const form = this;
+        $('#uploadButton').prop('disabled', true);
+        $('#uploadSpinner').removeClass('d-none');
+        $('#uploadButtonText').text('جاري رفع الوثيقة...');
+        $('#uploadSuccess, #uploadError').addClass('d-none');
+
+        $.ajax({
+            url: '/api/documents/upload',
+            method: 'POST',
+            data: new FormData(form),
+            processData: false,
+            contentType: false
+        }).done(function(response) {
+            showMessage('#uploadSuccess', response.message || 'تمت معالجة الوثيقة بنجاح.');
+            form.reset();
+            $('#language').val('ar');
+            $('#source_type').val('teacher_upload');
+            loadDocuments();
+        }).fail(function(xhr) {
+            const response = xhr.responseJSON || {};
+            showMessage('#uploadError', response.message || 'تعذر رفع الوثيقة.');
+        }).always(function() {
+            $('#uploadButton').prop('disabled', false);
+            $('#uploadSpinner').addClass('d-none');
+            $('#uploadButtonText').text('رفع الوثيقة');
+        });
+    });
+
+    loadDocuments();
+});
+</script>
+{% endblock %}

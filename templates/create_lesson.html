@@ -179,7 +179,7 @@ $(document).ready(function() {
                         });
                         $('#validationAlert').removeClass('d-none');
                     } else {
-                        $('#errorMessage').text(response.error_message || 'تعذر إنشاء الجذاذة. يرجى المحاولة مرة أخرى.');
+                        $('#errorMessage').text(response.error || response.error_message || 'تعذر إنشاء الجذاذة. يرجى المحاولة مرة أخرى.');
                         $('#errorAlert').removeClass('d-none');
                     }
                     
@@ -190,9 +190,20 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                // Show error
-                $('#errorMessage').text('حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
-                $('#errorAlert').removeClass('d-none');
+                const response = xhr.responseJSON;
+                if (response && response.validation_errors && response.validation_errors.length > 0) {
+                    $('#validationErrors').empty();
+                    response.validation_errors.forEach(function(validationError) {
+                        $('#validationErrors').append('<li>' + validationError + '</li>');
+                    });
+                    $('#validationAlert').removeClass('d-none');
+                } else {
+                    $('#errorMessage').text(
+                        (response && (response.error || response.error_message)) ||
+                        'حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.'
+                    );
+                    $('#errorAlert').removeClass('d-none');
+                }
                 
                 // Reset button
                 $('#generateBtn').prop('disabled', false);

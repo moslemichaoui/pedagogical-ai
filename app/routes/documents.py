@@ -1,4 +1,6 @@
-from flask import Blueprint, current_app, jsonify, request
+import os
+
+from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app.models import Document
 from app.services.document_service import DEFAULT_SOURCE_TYPE, DocumentService
@@ -6,6 +8,11 @@ from app.services.extraction_service import ExtractionService
 from app.services.retrieval_service import RetrievalService
 
 bp = Blueprint('documents', __name__)
+
+
+@bp.route('/documents', methods=['GET'])
+def documents_page():
+    return render_template('knowledge_base.html')
 
 
 @bp.route('/api/documents/upload', methods=['POST'])
@@ -38,6 +45,7 @@ def upload_document():
         )
         return jsonify(result), 201
     except ValueError as exc:
+        _remove_failed_upload(save_path)
         return jsonify({
             'success': False,
             'document_id': None,
@@ -47,6 +55,7 @@ def upload_document():
             'message': str(exc),
         }), 400
     except Exception as exc:
+        _remove_failed_upload(save_path)
         return jsonify({
             'success': False,
             'document_id': None,
@@ -80,6 +89,11 @@ def get_document(document_id):
         'subject': document.subject,
         'educational_level': document.educational_level,
         'language': document.language,
+        'chapter': document.chapter,
+        'filename': f"{document.title}{os.path.splitext(document.file_path)[1]}",
+        'file_type': os.path.splitext(document.file_path)[1].lstrip('.').upper() or None,
+        'created_at': document.created_at.isoformat() if document.created_at else None,
+        'processing_status': 'processed' if document.chunks else 'pending',
         'number_of_chunks': len(document.chunks),
     })
 
@@ -101,10 +115,18 @@ def retrieve_documents():
 
 
 def _unique_save_path(upload_folder, filename):
-    import os
     import uuid
 
     os.makedirs(upload_folder, exist_ok=True)
     stem, suffix = os.path.splitext(filename)
     unique_name = f"{stem}_{uuid.uuid4().hex[:8]}{suffix}"
     return os.path.join(upload_folder, unique_name)
+
+
+def _remove_failed_upload(file_path):
+    """Remove only the uniquely-created upload when its ingestion failed."""
+    try:
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+    except OSError:
+        current_app.logger.warning('Unable to remove failed upload: %s', file_path)

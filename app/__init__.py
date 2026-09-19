@@ -1,6 +1,7 @@
 import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect, text
 from config import Config
 
 db = SQLAlchemy()
@@ -28,6 +29,7 @@ def create_app(config_class=Config):
 
     with app.app_context():
         db.create_all()
+        _apply_sqlite_schema_updates()
 
     from app.routes.main import bp as main_bp
     from app.routes.documents import bp as documents_bp
@@ -46,3 +48,17 @@ def create_app(config_class=Config):
         return "Internal server error", 500
 
     return app
+
+
+def _apply_sqlite_schema_updates():
+    """Apply the small, backwards-compatible SQLite changes used by this app."""
+    if db.engine.dialect.name != 'sqlite':
+        return
+
+    document_columns = {
+        column['name']
+        for column in inspect(db.engine).get_columns('documents')
+    }
+    if 'chapter' not in document_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text('ALTER TABLE documents ADD COLUMN chapter VARCHAR(255)'))

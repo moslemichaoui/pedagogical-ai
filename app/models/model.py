@@ -31,6 +31,7 @@ class Document(db.Model):
     subject = db.Column(db.String(100), nullable=True)
     educational_level = db.Column(db.String(50), nullable=True)
     language = db.Column(db.String(50), nullable=True)
+    chapter = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     chunks = db.relationship(
