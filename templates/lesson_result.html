@@ -9,6 +9,7 @@
         <div class="btn-group me-2">
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">طباعة</button>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="downloadAsPDF()">تحميل PDF</button>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="openExerciseOptions()">توليد التمارين</button>
         </div>
         <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.location.href='/create-lesson'">جذاذة جديدة</button>
     </div>
@@ -32,6 +33,60 @@
         <hr>
         <button type="button" class="btn btn-warning" onclick="window.location.href='/create-lesson'">إنشاء جذاذة جديدة</button>
     </div>
+
+    <div id="exerciseOptions" class="card mb-4 d-none">
+        <div class="card-header">
+            <h5 class="mb-0">توليد التمارين</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="exerciseCount" class="form-label">عدد التمارين</label>
+                    <select id="exerciseCount" class="form-select">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="exerciseDifficulty" class="form-label">الصعوبة</label>
+                    <select id="exerciseDifficulty" class="form-select">
+                        <option value="سهل">سهل</option>
+                        <option value="متوسط">متوسط</option>
+                        <option value="صعب">صعب</option>
+                        <option value="متدرج" selected>متدرج</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="exerciseTypes" class="form-label">أنواع التمارين</label>
+                    <select id="exerciseTypes" class="form-select" multiple size="4">
+                        <option value="أسئلة مباشرة" selected>أسئلة مباشرة</option>
+                        <option value="صح / خطأ" selected>صح / خطأ</option>
+                        <option value="أكمل الفراغ" selected>أكمل الفراغ</option>
+                        <option value="اختيار من متعدد">اختيار من متعدد</option>
+                        <option value="صل">صل</option>
+                        <option value="صنّف">صنّف</option>
+                        <option value="أسئلة قصيرة">أسئلة قصيرة</option>
+                        <option value="وضعيات تطبيقية">وضعيات تطبيقية</option>
+                        <option value="أنشطة ملاحظة">أنشطة ملاحظة</option>
+                        <option value="أنشطة علمية">أنشطة علمية</option>
+                    </select>
+                    <small class="text-muted">اضغط Ctrl لاختيار عدة أنواع.</small>
+                </div>
+            </div>
+            <div class="mt-3 d-flex gap-2">
+                <button type="button" class="btn btn-success" id="generateExercisesBtn" onclick="generateExercises()">
+                    <span id="exerciseSpinner" class="spinner-border spinner-border-sm d-none" aria-hidden="true"></span>
+                    توليد التمارين
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="$('#exerciseOptions').addClass('d-none')">إلغاء</button>
+            </div>
+            <div id="exerciseError" class="alert alert-danger d-none mt-3"></div>
+        </div>
+    </div>
+
+    <div id="exerciseResult" class="d-none mb-5"></div>
 </div>
 {% endblock %}
 
@@ -56,6 +111,119 @@ $(document).ready(function() {
     }
 });
 
+
+function openExerciseOptions() {
+    if (!sessionStorage.getItem('lessonPlan')) {
+        alert('لا توجد جذاذة صالحة لتوليد التمارين.');
+        return;
+    }
+    $('#exerciseOptions').removeClass('d-none');
+    document.getElementById('exerciseOptions').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function generateExercises() {
+    const lessonPlanData = sessionStorage.getItem('lessonPlan');
+    if (!lessonPlanData) {
+        $('#exerciseError').text('لا توجد جذاذة صالحة لتوليد التمارين.').removeClass('d-none');
+        return;
+    }
+
+    const types = $('#exerciseTypes').val() || [];
+    if (!types.length) {
+        $('#exerciseError').text('يرجى اختيار نوع واحد على الأقل من التمارين.').removeClass('d-none');
+        return;
+    }
+
+    $('#exerciseError').addClass('d-none');
+    $('#generateExercisesBtn').prop('disabled', true);
+    $('#exerciseSpinner').removeClass('d-none');
+
+    $.ajax({
+        url: '/api/exercises/generate',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            lesson_plan: JSON.parse(lessonPlanData),
+            exercise_types: types,
+            count: parseInt($('#exerciseCount').val(), 10),
+            difficulty: $('#exerciseDifficulty').val(),
+            language: sessionStorage.getItem('lessonLanguage') || 'ar'
+        }),
+        success: function(response) {
+            if (response.success && response.exercise_set) {
+                sessionStorage.setItem('exerciseSet', JSON.stringify(response.exercise_set));
+                renderExerciseSet(response.exercise_set);
+                $('#exerciseOptions').addClass('d-none');
+            } else {
+                showExerciseError(response.error || 'تعذر إنشاء التمارين. يرجى المحاولة مرة أخرى.');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            showExerciseError(
+                (response && (response.error || response.error_message)) ||
+                'تعذر إنشاء التمارين. يرجى المحاولة مرة أخرى.'
+            );
+        },
+        complete: function() {
+            $('#generateExercisesBtn').prop('disabled', false);
+            $('#exerciseSpinner').addClass('d-none');
+        }
+    });
+}
+
+function showExerciseError(message) {
+    $('#exerciseError').text(message).removeClass('d-none');
+}
+
+function renderExerciseSet(exerciseSet) {
+    let html = `
+    <div class="card border-success">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">التمارين</h5>
+            <span>${exerciseSet.total_exercises} تمرين</span>
+        </div>
+        <div class="card-body">
+            <p><strong>الدرس:</strong> ${exerciseSet.lesson_title}</p>
+            <div class="alert alert-info">
+                <strong>نسخة المعلم:</strong> تتضمن التمرينات والإجابات والتفسيرات.
+            </div>`;
+
+    exerciseSet.exercises.forEach(function(exercise) {
+        html += `
+        <div class="card mb-3">
+            <div class="card-header">
+                <strong>التمرين ${exercise.id}</strong>
+                <span class="badge bg-secondary ms-2">${exercise.type}</span>
+                <span class="badge bg-info ms-2">${exercise.difficulty}</span>
+            </div>
+            <div class="card-body">
+                ${exercise.instructions ? '<p><strong>التعليمات:</strong> ' + exercise.instructions + '</p>' : ''}
+                <p><strong>السؤال:</strong> ${exercise.question}</p>`;
+
+        if (exercise.options && exercise.options.length) {
+            html += '<div class="mb-2"><strong>الاختيارات:</strong><ul>';
+            exercise.options.forEach(function(option) {
+                html += '<li>' + option + '</li>';
+            });
+            html += '</ul></div>';
+        }
+
+        html += `
+                <div class="alert alert-success mb-2">
+                    <strong>الإجابة:</strong> ${exercise.answer}
+                </div>
+                <p><strong>التفسير:</strong> ${exercise.explanation}</p>
+                <p><strong>الهدف:</strong> ${exercise.objective}</p>
+                <small class="text-muted">المدة التقديرية: ${exercise.estimated_time} دقائق</small>
+            </div>
+        </div>`;
+    });
+
+    html += '</div></div>';
+    $('#exerciseResult').html(html).removeClass('d-none');
+    document.getElementById('exerciseResult').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
 function renderLessonPlan(lessonPlan, retrievedContextCount) {
     let html = `
     <div class="card mb-4">

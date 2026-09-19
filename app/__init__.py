@@ -34,9 +34,11 @@ def create_app(config_class=Config):
     from app.routes.main import bp as main_bp
     from app.routes.documents import bp as documents_bp
     from app.routes.lessons import bp as lessons_bp
+    from app.routes.exercises import bp as exercises_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(documents_bp)
     app.register_blueprint(lessons_bp)
+    app.register_blueprint(exercises_bp)
 
     @app.errorhandler(404)
     def not_found_error(error):

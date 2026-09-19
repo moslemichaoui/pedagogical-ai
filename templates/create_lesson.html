@@ -167,6 +167,7 @@ $(document).ready(function() {
                     // Store lesson plan in session storage for the result page
                     sessionStorage.setItem('lessonPlan', JSON.stringify(response.lesson_plan));
                     sessionStorage.setItem('retrievedContextCount', response.retrieved_context_count);
+                    sessionStorage.setItem('lessonLanguage', formData.language);
                     
                     // Redirect to result page (will load from session storage)
                     window.location.href = '/lesson/result';
