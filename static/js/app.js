@@ -17,3 +17,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// Log when lesson form loads
+if (document.getElementById('lessonForm')) {
+    console.log('Lesson form loaded');
+}
+
+// Log when lesson result page loads
+if (document.getElementById('loadingMessage')) {
+    console.log('Lesson result page loaded');
+}

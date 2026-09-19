@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}إنشاء جذاذة - Pedagogical AI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">إنشاء جذاذة</h1>
+</div>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>معلومات الجذاذة</h5>
+                </div>
+                <div class="card-body">
+                    <form id="lessonForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="subject" class="form-label">المادة</label>
+                                <select class="form-select" id="subject" name="subject" required>
+                                    <option value="الإيقاظ العلمي" selected>الإيقاظ العلمي</option>
+                                    <option value="الرياضيات">الرياضيات</option>
+                                    <option value="اللغة العربية">اللغة العربية</option>
+                                    <option value="اللغة الفرنسية">اللغة الفرنسية</option>
+                                    <option value="التربية الإسلامية">التربية الإسلامية</option>
+                                    <option value="التربية المدنية">التربية المدنية</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="educational_level" class="form-label">المستوى الدراسي</label>
+                                <select class="form-select" id="educational_level" name="educational_level" required>
+                                    <option value="">اختر المستوى</option>
+                                    <option value="السنة الأولى ابتدائي">السنة الأولى ابتدائي</option>
+                                    <option value="السنة الثانية ابتدائي">السنة الثانية ابتدائي</option>
+                                    <option value="السنة الثالثة ابتدائي">السنة الثالثة ابتدائي</option>
+                                    <option value="السنة الرابعة ابتدائي">السنة الرابعة ابتدائي</option>
+                                    <option value="السنة الخامسة ابتدائي">السنة الخامسة ابتدائي</option>
+                                    <option value="السنة السادسة ابتدائي">السنة السادسة ابتدائي</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="topic" class="form-label">موضوع الدرس</label>
+                                <input type="text" class="form-control" id="topic" name="topic" placeholder="مثال: دورة الماء" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="duration" class="form-label">المدة (دقائق)</label>
+                                <input type="number" class="form-control" id="duration" name="duration" min="5" max="180" value="45" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="difficulty" class="form-label">الصعوبة</label>
+                                <select class="form-select" id="difficulty" name="difficulty">
+                                    <option value="مبتدئ">مبتدئ</option>
+                                    <option value="متوسط" selected>متوسط</option>
+                                    <option value="متقدم">متقدم</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="language" class="form-label">اللغة</label>
+                                <select class="form-select" id="language" name="language">
+                                    <option value="ar" selected>العربية</option>
+                                    <option value="fr">Français</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="objectives" class="form-label">الأهداف التعليمية</label>
+                            <textarea class="form-control" id="objectives" name="objectives" rows="3" placeholder="أدخل الأهداف التعليمية، كل هدف في سطر جديد"></textarea>
+                            <small class="text-muted">أدخل كل هدف في سطر جديد</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="teacher_instructions" class="form-label">تعليمات إضافية (اختياري)</label>
+                            <textarea class="form-control" id="teacher_instructions" name="teacher_instructions" rows="2" placeholder="أي تعليمات إضافية للمعلم"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="use_documents" name="use_documents">
+                                <label class="form-check-label" for="use_documents">
+                                    استخدام الوثائق المتاحة في قاعدة المعرفة
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-secondary me-md-2" onclick="window.location.href='/'">إلغاء</button>
+                            <button type="submit" class="btn btn-primary" id="generateBtn">
+                                <span class="spinner-border spinner-border-sm d-none" id="loadingSpinner" role="status" aria-hidden="true"></span>
+                                <span id="btnText">إنشاء الجذاذة</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Alert -->
+<div class="alert alert-danger d-none mt-3" id="errorAlert" role="alert">
+    <h4 class="alert-heading">خطأ</h4>
+    <p id="errorMessage"></p>
+    <hr>
+    <button type="button" class="btn btn-outline-danger" onclick="$('#errorAlert').addClass('d-none')">إغلاق</button>
+</div>
+
+<!-- Validation Errors -->
+<div class="alert alert-warning d-none mt-3" id="validationAlert" role="alert">
+    <h4 class="alert-heading">أخطاء في التحقق</h4>
+    <ul id="validationErrors"></ul>
+    <hr>
+    <button type="button" class="btn btn-outline-warning" onclick="$('#validationAlert').addClass('d-none')">إغلاق</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#lessonForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const formData = {
+            subject: $('#subject').val(),
+            educational_level: $('#educational_level').val(),
+            topic: $('#topic').val(),
+            duration: parseInt($('#duration').val()),
+            difficulty: $('#difficulty').val(),
+            language: $('#language').val(),
+            teacher_instructions: $('#teacher_instructions').val() || null,
+            objectives: []
+        };
+        
+        // Parse objectives (one per line)
+        const objectivesText = $('#objectives').val();
+        if (objectivesText.trim()) {
+            formData.objectives = objectivesText.split('\n').filter(obj => obj.trim());
+        }
+        
+        // Show loading state
+        $('#generateBtn').prop('disabled', true);
+        $('#loadingSpinner').removeClass('d-none');
+        $('#btnText').text('جاري الإنشاء...');
+        
+        // Hide alerts
+        $('#errorAlert').addClass('d-none');
+        $('#validationAlert').addClass('d-none');
+        
+        // Send API request
+        $.ajax({
+            url: '/api/lessons/generate',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.success) {
+                    // Store lesson plan in session storage for the result page
+                    sessionStorage.setItem('lessonPlan', JSON.stringify(response.lesson_plan));
+                    sessionStorage.setItem('retrievedContextCount', response.retrieved_context_count);
+                    
+                    // Redirect to result page (will load from session storage)
+                    window.location.href = '/lesson/result';
+                } else {
+                    // Show error
+                    if (response.validation_errors && response.validation_errors.length > 0) {
+                        $('#validationErrors').empty();
+                        response.validation_errors.forEach(function(error) {
+                            $('#validationErrors').append('<li>' + error + '</li>');
+                        });
+                        $('#validationAlert').removeClass('d-none');
+                    } else {
+                        $('#errorMessage').text(response.error_message || 'تعذر إنشاء الجذاذة. يرجى المحاولة مرة أخرى.');
+                        $('#errorAlert').removeClass('d-none');
+                    }
+                    
+                    // Reset button
+                    $('#generateBtn').prop('disabled', false);
+                    $('#loadingSpinner').addClass('d-none');
+                    $('#btnText').text('إنشاء الجذاذة');
+                }
+            },
+            error: function(xhr, status, error) {
+                // Show error
+                $('#errorMessage').text('حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
+                $('#errorAlert').removeClass('d-none');
+                
+                // Reset button
+                $('#generateBtn').prop('disabled', false);
+                $('#loadingSpinner').addClass('d-none');
+                $('#btnText').text('إنشاء الجذاذة');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

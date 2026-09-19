@@ -192,24 +192,27 @@ class ValidationService:
         """Validate that experiments and activities are safe."""
         errors = []
         
-        dangerous_keywords = [
-            'fire', 'explosive', 'poison', 'toxic', 'acid', 'burn',
-            'حريق', 'انفجار', 'سم', 'سام', 'حمض', 'حرق'
+        # More specific dangerous keywords to avoid false positives
+        really_dangerous_keywords = [
+            'انفجار', 'سمم', 'تسمم', 'حارق', 'تحريق',
+            'explosive', 'poison', 'toxic', 'acid burn', 'set fire'
         ]
         
         for experiment in lesson_plan.experiments:
             experiment_lower = experiment.lower()
-            for keyword in dangerous_keywords:
+            for keyword in really_dangerous_keywords:
                 if keyword in experiment_lower:
                     errors.append(f"Potentially dangerous content in experiment: '{experiment[:50]}...'")
                     break
         
         for activity in lesson_plan.activities:
             activity_lower = activity.lower()
-            for keyword in dangerous_keywords:
+            for keyword in really_dangerous_keywords:
                 if keyword in activity_lower:
                     errors.append(f"Potentially dangerous content in activity: '{activity[:50]}...'")
                     break
+        
+        return errors
         
         return errors
     
