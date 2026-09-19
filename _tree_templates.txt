@@ -1,2 +1,0 @@
-C:\Users\ichao\Documents\pedagogical_ai\templates\base.html
-C:\Users\ichao\Documents\pedagogical_ai\templates\dashboard.html
