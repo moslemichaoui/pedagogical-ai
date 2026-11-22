@@ -1,143 +1,95 @@
-"""Service for generating validated exercises from a lesson plan."""
-import json
-import logging
-from typing import Any, Dict, Optional, List
+"""Generate exercises from a saved lesson sheet."""
+from __future__ import annotations
 
+import logging
+from typing import Any, Dict, Optional
+
+from app.ai.exercise_prompts import EXERCISE_SYSTEM_PROMPT, build_exercise_generation_prompt
 from app.ai.exercise_schemas import (
     ExerciseGenerationRequest,
     ExerciseGenerationResponse,
     ExerciseSet,
 )
-from app.ai.exercise_prompts import EXERCISE_SYSTEM_PROMPT, build_exercise_generation_prompt
+from app.ai.gemini_provider import GeminiError, GeminiErrorType, GeminiProvider
 from app.ai.schemas import LessonPlan
-from app.ai.gemini_provider import GeminiProvider
+from app.utils.text import extract_json
 
 logger = logging.getLogger(__name__)
 
 
 class ExerciseGenerationService:
-    """Generate exercises from an existing validated lesson plan."""
+    def __init__(self, provider: Optional[GeminiProvider] = None):
+        self.provider = provider or GeminiProvider()
 
-    def __init__(self, gemini_provider: Optional[GeminiProvider] = None):
-        self.gemini_provider = gemini_provider or GeminiProvider()
-
-    def generate_exercises(
-        self, request: ExerciseGenerationRequest
-    ) -> ExerciseGenerationResponse:
-        try:
-            try:
-                validated_lesson = LessonPlan(**request.lesson_plan)
-            except Exception as exc:
-                return ExerciseGenerationResponse(
-                    success=False,
-                    validation_errors=[str(exc)],
-                    error_message="Invalid lesson plan",
-                )
-
-            lesson_plan_data = validated_lesson.model_dump()
-
-            prompt = build_exercise_generation_prompt(
-                lesson_plan=lesson_plan_data,
-                exercise_types=request.exercise_types,
-                count=request.count,
-                difficulty=request.difficulty,
-                language=request.language,
-            )
-
-            try:
-                response_text = self.gemini_provider.generate(
-                    prompt=f"{EXERCISE_SYSTEM_PROMPT}\n\n{prompt}"
-                )
-            except RuntimeError as exc:
-                logger.warning("Exercise Gemini provider unavailable: %s", exc)
-                return ExerciseGenerationResponse(
-                    success=False,
-                    error_message=f"Gemini API not available: {exc}",
-                )
-
-            payload = self._parse_json_response(response_text)
-            if payload is None:
-                return ExerciseGenerationResponse(
-                    success=False,
-                    error_message="Failed to parse valid JSON from Gemini response",
-                )
-
-            try:
-                exercise_set = ExerciseSet(**payload)
-            except Exception as exc:
-                return ExerciseGenerationResponse(
-                    success=False,
-                    validation_errors=[str(exc)],
-                    error_message="Exercise validation failed",
-                )
-
-            if exercise_set.total_exercises != request.count:
-                return ExerciseGenerationResponse(
-                    success=False,
-                    validation_errors=[
-                        f"Expected {request.count} exercises, received "
-                        f"{exercise_set.total_exercises}"
-                    ],
-                    error_message="Exercise count validation failed",
-                )
-
-            allowed = set(request.exercise_types)
-            unexpected = [
-                exercise.type
-                for exercise in exercise_set.exercises
-                if exercise.type not in allowed
-            ]
-            if unexpected:
-                return ExerciseGenerationResponse(
-                    success=False,
-                    validation_errors=[
-                        f"Generated exercise types are not allowed: "
-                        f"{', '.join(sorted(set(unexpected)))}"
-                    ],
-                    error_message="Exercise type validation failed",
-                )
-
-            return ExerciseGenerationResponse(
-                success=True,
-                exercise_set=exercise_set,
-            )
-
-        except Exception as exc:
-            logger.error("Exercise generation failed: %s", exc, exc_info=True)
+    def generate(self, request: ExerciseGenerationRequest) -> ExerciseGenerationResponse:
+        if not self.provider.is_available():
             return ExerciseGenerationResponse(
                 success=False,
-                error_message=f"Exercise generation failed: {exc}",
+                error_code=GeminiErrorType.NOT_CONFIGURED.value,
+                error_message="لم يتم إعداد مفتاح Gemini بعد. أضف GEMINI_API_KEY في ملف .env.",
+            )
+        try:
+            plan = LessonPlan(**request.lesson_plan)
+        except Exception as exc:  # noqa: BLE001
+            return ExerciseGenerationResponse(
+                success=False,
+                error_code="invalid_lesson",
+                error_message="الجذاذة المحفوظة غير صالحة لتوليد التمارين.",
+                validation_errors=[str(exc)[:300]],
             )
 
-    @staticmethod
-    def _parse_json_response(response_text: str) -> Optional[Dict[str, Any]]:
-        if not response_text:
-            return None
+        prompt = build_exercise_generation_prompt(
+            lesson_plan=plan.model_dump(),
+            exercise_types=request.exercise_types,
+            count=request.count,
+            difficulty=request.difficulty,
+            language=request.language,
+        )
         try:
-            return json.loads(response_text)
-        except json.JSONDecodeError:
-            pass
+            result = self.provider.generate(
+                prompt, system_instruction=EXERCISE_SYSTEM_PROMPT, json_mode=True
+            )
+        except GeminiError as exc:
+            return ExerciseGenerationResponse(
+                success=False, error_code=exc.code, error_message=exc.message
+            )
 
-        if "```" in response_text:
-            lines = response_text.splitlines()
-            collected: List[str] = []
-            inside = False
-            for line in lines:
-                if line.strip().startswith("```"):
-                    inside = not inside
-                    continue
-                if inside:
-                    collected.append(line)
-            try:
-                return json.loads("\n".join(collected))
-            except json.JSONDecodeError:
-                pass
+        payload = extract_json(result.text)
+        if payload is None:
+            return ExerciseGenerationResponse(
+                success=False,
+                error_code=GeminiErrorType.INVALID_JSON.value,
+                error_message="أعاد النموذج محتوى غير صالح. أعد المحاولة.",
+            )
 
-        start = response_text.find("{")
-        end = response_text.rfind("}") + 1
-        if start >= 0 and end > start:
-            try:
-                return json.loads(response_text[start:end])
-            except json.JSONDecodeError:
-                return None
-        return None
+        payload.setdefault("lesson_title", plan.title)
+        payload.setdefault("subject", plan.subject)
+        payload.setdefault("educational_level", plan.educational_level)
+        try:
+            exercise_set = ExerciseSet(**payload)
+        except Exception as exc:  # noqa: BLE001
+            return ExerciseGenerationResponse(
+                success=False,
+                error_code="invalid_exercises",
+                error_message="تعذّر التحقق من التمارين المولّدة.",
+                validation_errors=[str(exc)[:300]],
+            )
+
+        exercise_set.exercises = exercise_set.exercises[: request.count]
+        exercise_set.total_exercises = len(exercise_set.exercises)
+        if not exercise_set.exercises:
+            return ExerciseGenerationResponse(
+                success=False,
+                error_code="empty_exercises",
+                error_message="لم يُنتج النموذج أي تمرين. أعد المحاولة.",
+            )
+
+        return ExerciseGenerationResponse(
+            success=True,
+            exercise_set=exercise_set,
+            model_used=result.model_used,
+        )
+
+    @staticmethod
+    def serialize(exercise_set: ExerciseSet) -> Dict[str, Any]:
+        return exercise_set.model_dump()

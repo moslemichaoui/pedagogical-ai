@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon %}
+
+{% block content %}
+{% if not plan %}
+  <div class="alert alert--danger">
+    {{ icon('alert') }}
+    <div><strong>محتوى الجذاذة غير صالح</strong><span>تعذّر قراءة البيانات المحفوظة. يمكنك حذف الجذاذة وإعادة توليدها.</span></div>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('main.lessons_library') }}">العودة إلى جذاذاتي</a>
+{% else %}
+
+<div class="row row--between no-print" style="margin-block-end:1rem">
+  <a class="btn btn--ghost btn--sm" href="{{ url_for('main.lessons_library') }}">
+    {{ icon('chevron-right') }} جذاذاتي
+  </a>
+  <div class="btn-row">
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('main.lesson_print', lesson_id=lesson.id) }}" target="_blank" rel="noopener">
+      {{ icon('print') }} طباعة
+    </a>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('lessons.export_lesson', lesson_id=lesson.id) }}">
+      {{ icon('download') }} Word
+    </a>
+    <form method="post" action="{{ url_for('lessons.duplicate_lesson', lesson_id=lesson.id) }}"
+          data-fetch data-success="تم إنشاء نسخة." style="display:inline">
+      <button class="btn btn--ghost btn--sm" type="submit">{{ icon('copy') }} نسخة</button>
+    </form>
+    <button class="btn btn--danger btn--sm" type="button"
+            data-delete-url="{{ url_for('lessons.delete_lesson', lesson_id=lesson.id) }}"
+            data-confirm-title="حذف الجذاذة"
+            data-confirm-text="سيتم حذف «{{ lesson.title }}» نهائياً مع تمارينها وتقويمها."
+            data-success-text="تم حذف الجذاذة."
+            data-redirect="{{ url_for('main.lessons_library') }}">
+      {{ icon('trash') }} حذف
+    </button>
+  </div>
+</div>
+
+<article class="sheet reveal">
+  <header class="sheet-head">
+    <h1>{{ plan.title }}</h1>
+    <div class="sheet-meta">
+      <span class="chip chip--ghost">{{ lesson.created_at|ar_date }}</span>
+      <span class="chip">{{ plan.subject }}</span>
+      <span class="chip">{{ plan.educational_level }}</span>
+      <span class="chip">{{ icon('clock') }} {{ plan.duration }} دقيقة</span>
+      {% if plan.competency %}<span class="chip">{{ plan.competency|short(52) }}</span>{% endif %}
+      <span class="chip">{{ icon('layers') }} {{ plan.lesson_phases|length }} مراحل</span>
+      {% if plan.insufficient_sources %}
+        <span class="chip chip--warn">مصادر ناقصة</span>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="sheet-body">
+    <div class="tabs no-print" data-tabs role="tablist" aria-label="أقسام الجذاذة">
+      <button class="tab is-active" id="tab-sheet" type="button" data-tab="sheet" role="tab" aria-selected="true" aria-controls="panel-sheet" tabindex="0">الجذاذة</button>
+      <button class="tab" id="tab-exercises" type="button" data-tab="exercises" role="tab" aria-selected="false" aria-controls="panel-exercises" tabindex="-1">التمارين ({{ exercises|length }})</button>
+      <button class="tab" id="tab-assessment" type="button" data-tab="assessment" role="tab" aria-selected="false" aria-controls="panel-assessment" tabindex="-1">التقويم ({{ assessments|length }})</button>
+    </div>
+
+    <div class="tab-panel" id="panel-sheet" data-panel="sheet" role="tabpanel" aria-labelledby="tab-sheet" tabindex="0">
+      {# 05 #}
+      <section class="section">
+        <div class="section-head"><h2>الكفاءة المستهدفة</h2></div>
+        <p class="prose" style="margin:0">{{ plan.competency or '—' }}</p>
+      </section>
+
+      {# 06 #}
+      <section class="section">
+        <div class="section-head"><h2>الأهداف التعليمية</h2></div>
+        <ul class="bullets">
+          {% for item in plan.learning_objectives %}<li>{{ item }}</li>{% else %}<li class="muted">لم تُحدَّد أهداف.</li>{% endfor %}
+        </ul>
+      </section>
+
+      {# 07 #}
+      <section class="section">
+        <div class="section-head"><h2>المكتسبات السابقة</h2></div>
+        <ul class="bullets">
+          {% for item in plan.prerequisites %}<li>{{ item }}</li>{% else %}<li class="muted">—</li>{% endfor %}
+        </ul>
+      </section>
+
+      {# 08 #}
+      <section class="section">
+        <div class="section-head"><h2>الوسائل التعليمية</h2></div>
+        <div class="row" style="gap:.4rem">
+          {% for item in plan.materials %}<span class="chip chip--saffron">{{ item }}</span>{% else %}<span class="muted">—</span>{% endfor %}
+        </div>
+      </section>
+
+      {# 09 #}
+      <section class="section">
+        <div class="section-head"><h2>المفاهيم والمصطلحات</h2></div>
+        <div class="row" style="gap:.4rem">
+          {% for item in plan.key_concepts %}<span class="chip chip--stamp">{{ item }}</span>{% else %}<span class="muted">—</span>{% endfor %}
+        </div>
+      </section>
+
+      {# 10 #}
+      <section class="section">
+        <div class="section-head"><h2>وضعية الانطلاق</h2></div>
+        <p class="prose" style="margin:0">{{ plan.introduction or '—' }}</p>
+      </section>
+
+      {# 11 #}
+      <section class="section">
+        <div class="section-head"><h2>مراحل بناء التعلمات</h2></div>
+        <div class="phases">
+          {% for phase in plan.lesson_phases %}
+            <div class="phase">
+              <div class="phase-head">
+                <strong>{{ phase.name }}</strong>
+                <span class="chip chip--ghost">{{ icon('clock') }} {{ phase.duration }} د</span>
+              </div>
+              <div class="phase-body">
+                <div class="phase-grid">
+                  <div class="phase-col">
+                    <h3>أنشطة المعلّم</h3>
+                    <ul>{% for item in phase.teacher_actions %}<li>{{ item }}</li>{% else %}<li class="muted">—</li>{% endfor %}</ul>
+                  </div>
+                  <div class="phase-col">
+                    <h3>أنشطة المتعلّم</h3>
+                    <ul>{% for item in phase.learner_actions %}<li>{{ item }}</li>{% else %}<li class="muted">—</li>{% endfor %}</ul>
+                  </div>
+                  <div class="phase-col">
+                    <h3>أسئلة توجيهية</h3>
+                    <ul>{% for item in phase.guiding_questions %}<li>{{ item }}</li>{% else %}<li class="muted">—</li>{% endfor %}</ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <p class="muted" style="margin:0">لم تُحدَّد مراحل.</p>
+          {% endfor %}
+        </div>
+      </section>
+
+      {% if plan.experiments %}
+        {# 15 #}
+        <section class="section">
+          <div class="section-head"><h2>التجارب والأنشطة العلمية</h2></div>
+          <div class="stack" style="--stack:.85rem">
+            {% for experiment in plan.experiments %}
+              <div class="phase">
+                <div class="phase-head">
+                  <strong>{{ icon('flask') }} {{ experiment.title or 'تجربة' }}</strong>
+                  <span class="chip {{ 'chip--danger' if experiment.risk_level not in ['منعدم', 'ضعيف', 'منخفض'] else 'chip--ok' }}">
+                    خطورة: {{ experiment.risk_level }}
+                  </span>
+                </div>
+                <div class="phase-body">
+                  <div class="phase-grid">
+                    <div class="phase-col">
+                      <h3>المواد</h3>
+                      <ul>{% for item in experiment.materials %}<li>{{ item }}</li>{% else %}<li class="muted">—</li>{% endfor %}</ul>
+                    </div>
+                    <div class="phase-col">
+                      <h3>الخطوات</h3>
+                      <ol style="margin:0; padding-inline-start:1.1rem; color:var(--ink-soft); font-size:.92rem">
+                        {% for item in experiment.steps %}<li>{{ item }}</li>{% else %}<li class="muted">—</li>{% endfor %}
+                      </ol>
+                    </div>
+                    <div class="phase-col">
+                      <h3>ملاحظات السلامة</h3>
+                      <ul>{% for item in experiment.safety_notes %}<li>{{ item }}</li>{% else %}<li class="muted">—</li>{% endfor %}</ul>
+                    </div>
+                  </div>
+                  {% if experiment.expected_observation %}
+                    <p class="small" style="margin:0"><strong>الملاحظة المتوقعة:</strong> {{ experiment.expected_observation }}</p>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      {% if plan.examples %}
+        {# 16 #}
+        <section class="section">
+          <div class="section-head"><h2>الأمثلة</h2></div>
+          <ul class="bullets">{% for item in plan.examples %}<li>{{ item }}</li>{% endfor %}</ul>
+        </section>
+      {% endif %}
+
+      {# 17 #}
+      <section class="section">
+        <div class="section-head"><h2>التقويم التكويني</h2></div>
+        {% if plan.formative_assessment.description %}
+          <p class="small muted">{{ plan.formative_assessment.description }}</p>
+        {% endif %}
+        {% for item in plan.formative_assessment.items %}
+          <div class="assess-item">
+            <div class="assess-q">{{ loop.index }}. {{ item.question }}</div>
+            <span class="assess-a">الإجابة: {{ item.answer }}</span>
+            {% if item.explanation %}<div class="assess-e">{{ item.explanation }}</div>{% endif %}
+          </div>
+        {% else %}
+          <p class="muted" style="margin:0">—</p>
+        {% endfor %}
+      </section>
+
+      {# 18 #}
+      <section class="section">
+        <div class="section-head"><h2>التقويم النهائي</h2></div>
+        {% if plan.summative_assessment.description %}
+          <p class="small muted">{{ plan.summative_assessment.description }}</p>
+        {% endif %}
+        {% for item in plan.summative_assessment.items %}
+          <div class="assess-item">
+            <div class="assess-q">{{ loop.index }}. {{ item.question }}</div>
+            <span class="assess-a">الإجابة: {{ item.answer }}</span>
+            {% if item.explanation %}<div class="assess-e">{{ item.explanation }}</div>{% endif %}
+          </div>
+        {% else %}
+          <p class="muted" style="margin:0">—</p>
+        {% endfor %}
+      </section>
+
+      {# 19 #}
+      <section class="section">
+        <div class="section-head"><h2>الدعم والعلاج</h2></div>
+        <p class="prose" style="margin:0">{{ plan.remediation or '—' }}</p>
+      </section>
+
+      {# 20 #}
+      <section class="section">
+        <div class="section-head"><h2>خلاصة الدرس</h2></div>
+        <p class="prose" style="margin:0">{{ plan.summary or '—' }}</p>
+      </section>
+
+      {# 21 #}
+      <section class="section">
+        <div class="section-head"><h2>النشاط المنزلي</h2></div>
+        <p class="prose" style="margin:0">{{ plan.homework or '—' }}</p>
+      </section>
+
+      {% if plan.sources %}
+        <section class="section">
+          <div class="section-head"><h2>المصادر المعتمدة</h2></div>
+          <ul class="bullets">{% for item in plan.sources %}<li>{{ item }}</li>{% endfor %}</ul>
+        </section>
+      {% endif %}
+    </div>
+
+    <div class="tab-panel" id="panel-exercises" data-panel="exercises" role="tabpanel" aria-labelledby="tab-exercises" tabindex="0" hidden>
+      <div class="row row--between" style="margin-block-end:1rem">
+        <h2 class="marker">تمارين التطبيق</h2>
+        <div class="btn-row">
+          <select id="exercise-count" class="btn btn--ghost btn--sm" aria-label="عدد التمارين" style="padding:.35rem .7rem">
+            <option value="5">5 تمارين</option>
+            <option value="8" selected>8 تمارين</option>
+            <option value="10">10 تمارين</option>
+            <option value="12">12 تمريناً</option>
+          </select>
+          <button class="btn btn--primary btn--sm" type="button"
+                  data-generate-exercises="{{ url_for('exercises.generate_for_lesson', lesson_id=lesson.id) }}">
+            {{ icon('sparkles') }} ولّد تمارين
+          </button>
+        </div>
+      </div>
+
+      {% if exercises %}
+        <div class="stack" style="--stack:.75rem" id="exercise-list">
+          {% for exercise in exercises %}
+            <div class="assess-item" data-row>
+              <div class="row row--between" style="align-items:flex-start">
+                <div class="assess-q">{{ loop.index }}. {{ exercise.question }}</div>
+                <div class="row" style="gap:.3rem; flex-shrink:0">
+                  <span class="chip chip--ghost">{{ exercise.type }}</span>
+                  <span class="chip chip--ghost">{{ exercise.difficulty }}</span>
+                </div>
+              </div>
+              {% if exercise.options %}
+                <div class="row" style="gap:.35rem; margin-block:.35rem">
+                  {% for option in exercise.options %}<span class="chip">{{ option }}</span>{% endfor %}
+                </div>
+              {% endif %}
+              <span class="assess-a">الإجابة: {{ exercise.answer }}</span>
+              {% if exercise.explanation %}<div class="assess-e">{{ exercise.explanation }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">{{ icon('edit') }}</div>
+          <h3>لا توجد تمارين بعد</h3>
+          <p>ولّد تمارين مرتبطة بأهداف هذه الجذاذة، مع الإجابات والشرح.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="tab-panel" id="panel-assessment" data-panel="assessment" role="tabpanel" aria-labelledby="tab-assessment" tabindex="0" hidden>
+      <div class="row row--between" style="margin-block-end:1rem">
+        <h2 class="marker">أسئلة التقويم</h2>
+        <button class="btn btn--primary btn--sm" type="button"
+                data-generate-assessments="{{ url_for('assessments.generate_for_lesson', lesson_id=lesson.id) }}">
+          {{ icon('sparkles') }} ولّد تقويماً جديداً
+        </button>
+      </div>
+
+      {% if assessments %}
+        <div class="stack" style="--stack:.75rem">
+          {% for item in assessments %}
+            <div class="assess-item" data-row>
+              <div class="row row--between" style="align-items:flex-start">
+                <div class="assess-q">{{ loop.index }}. {{ item.question }}</div>
+                <span class="chip chip--ghost">{{ (item.payload or {}).get('label') or item.type }}</span>
+              </div>
+              <span class="assess-a">الإجابة: {{ item.answer }}</span>
+              {% if item.explanation %}<div class="assess-e">{{ item.explanation }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">{{ icon('target') }}</div>
+          <h3>لا توجد أسئلة تقويم محفوظة</h3>
+          <p>الجذاذة تحتوي تقويماً داخل أقسامها، ويمكنك توليد نسخة مستقلة قابلة للطباعة.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</article>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/lesson.js') }}" defer></script>
+{% endblock %}

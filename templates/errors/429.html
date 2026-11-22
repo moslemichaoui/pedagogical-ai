@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon %}
+
+{% block content %}
+<section class="empty reveal" style="margin-block-start:2rem">
+  <div class="empty-icon" style="color:var(--saffron-deep)">{{ icon('clock') }}</div>
+  <h1 style="font-size:clamp(2.4rem,7vw,4rem); margin-block-end:.2rem">429</h1>
+  <h2>عدد الطلبات مرتفع</h2>
+  <p>حمايةً لحصّة Gemini، أعد المحاولة بعد قليل.</p>
+  <div class="btn-row" style="justify-content:center">
+    <a class="btn btn--primary" href="{{ url_for('main.dashboard') }}">الرئيسية</a>
+  </div>
+</section>
+{% endblock %}

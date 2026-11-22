@@ -1,218 +1,179 @@
-{% extends "base.html" %}
-
-{% block title %}إنشاء جذاذة - Pedagogical AI{% endblock %}
+{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">إنشاء جذاذة</h1>
+<div class="page-head">
+  <div>
+    <h1>جذاذة درس جديدة</h1>
+    <p class="lede">املأ الحقول الأساسية. كل ما تكتبه بالعربية الفصحى يوجّه المحتوى المولَّد.</p>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('main.lessons_library') }}">{{ icon('book') }} جذاذاتي</a>
 </div>
 
-<div class="container">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5>معلومات الجذاذة</h5>
-                </div>
-                <div class="card-body">
-                    <form id="lessonForm">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="subject" class="form-label">المادة</label>
-                                <select class="form-select" id="subject" name="subject" required>
-                                    <option value="الإيقاظ العلمي" selected>الإيقاظ العلمي</option>
-                                    <option value="الرياضيات">الرياضيات</option>
-                                    <option value="اللغة العربية">اللغة العربية</option>
-                                    <option value="اللغة الفرنسية">اللغة الفرنسية</option>
-                                    <option value="التربية الإسلامية">التربية الإسلامية</option>
-                                    <option value="التربية المدنية">التربية المدنية</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="educational_level" class="form-label">المستوى الدراسي</label>
-                                <select class="form-select" id="educational_level" name="educational_level" required>
-                                    <option value="">اختر المستوى</option>
-                                    <option value="السنة الأولى ابتدائي">السنة الأولى ابتدائي</option>
-                                    <option value="السنة الثانية ابتدائي">السنة الثانية ابتدائي</option>
-                                    <option value="السنة الثالثة ابتدائي">السنة الثالثة ابتدائي</option>
-                                    <option value="السنة الرابعة ابتدائي">السنة الرابعة ابتدائي</option>
-                                    <option value="السنة الخامسة ابتدائي">السنة الخامسة ابتدائي</option>
-                                    <option value="السنة السادسة ابتدائي">السنة السادسة ابتدائي</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="topic" class="form-label">موضوع الدرس</label>
-                                <input type="text" class="form-control" id="topic" name="topic" placeholder="مثال: دورة الماء" required>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label for="duration" class="form-label">المدة (دقائق)</label>
-                                <input type="number" class="form-control" id="duration" name="duration" min="5" max="180" value="45" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="difficulty" class="form-label">الصعوبة</label>
-                                <select class="form-select" id="difficulty" name="difficulty">
-                                    <option value="مبتدئ">مبتدئ</option>
-                                    <option value="متوسط" selected>متوسط</option>
-                                    <option value="متقدم">متقدم</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="language" class="form-label">اللغة</label>
-                                <select class="form-select" id="language" name="language">
-                                    <option value="ar" selected>العربية</option>
-                                    <option value="fr">Français</option>
-                                    <option value="en">English</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="objectives" class="form-label">الأهداف التعليمية</label>
-                            <textarea class="form-control" id="objectives" name="objectives" rows="3" placeholder="أدخل الأهداف التعليمية، كل هدف في سطر جديد"></textarea>
-                            <small class="text-muted">أدخل كل هدف في سطر جديد</small>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="teacher_instructions" class="form-label">تعليمات إضافية (اختياري)</label>
-                            <textarea class="form-control" id="teacher_instructions" name="teacher_instructions" rows="2" placeholder="أي تعليمات إضافية للمعلم"></textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="use_documents" name="use_documents">
-                                <label class="form-check-label" for="use_documents">
-                                    استخدام الوثائق المتاحة في قاعدة المعرفة
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button type="button" class="btn btn-secondary me-md-2" onclick="window.location.href='/'">إلغاء</button>
-                            <button type="submit" class="btn btn-primary" id="generateBtn">
-                                <span class="spinner-border spinner-border-sm d-none" id="loadingSpinner" role="status" aria-hidden="true"></span>
-                                <span id="btnText">إنشاء الجذاذة</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+{% if not ai_configured %}
+  <div class="alert alert--warn reveal" style="margin-block-end:1.25rem">
+    {{ icon('alert') }}
+    <div>
+      <strong>مفتاح Gemini غير مضبوط</strong>
+      <span>أضف <code>GEMINI_API_KEY</code> إلى ملف <code>.env</code> ثم أعد تشغيل التطبيق. يمكنك حفظ المسودّة الآن والعودة لاحقاً.</span>
     </div>
+  </div>
+{% endif %}
+
+<div class="split">
+  <form id="lesson-form" class="card card--stamp reveal" action="{{ url_for('lessons.generate_lesson') }}"
+        method="post" data-endpoint="{{ url_for('lessons.generate_lesson') }}" novalidate>
+    <div class="card-head">
+      <h2 class="marker"> بطاقة الطلب</h2>
+      <span class="chip chip--ghost">{{ icon('shield') }} بياناتك تبقى محلية</span>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="subject">المادة</label>
+        <select id="subject" name="subject" required>
+          {% for subject in subjects %}
+            <option value="{{ subject }}" {{ 'selected' if subject == draft.subject else '' }}>{{ subject }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="educational_level">المستوى الدراسي</label>
+        <select id="educational_level" name="educational_level" required>
+          {% for level in levels %}
+            <option value="{{ level }}" {{ 'selected' if level == draft.educational_level else '' }}>{{ level }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field field--full">
+        <label for="topic">موضوع الدرس</label>
+        <input id="topic" name="topic" type="text" required minlength="2" maxlength="300"
+               value="{{ draft.topic }}" placeholder="مثال: التغذية الصحية عند الحيوان" autocomplete="off"
+               aria-describedby="topic-hint">
+        <span class="hint" id="topic-hint">كن محدّداً: «دورة الماء في الطبيعة» أفضل من «الماء».</span>
+      </div>
+
+      <div class="field field--full">
+        <label for="duration">المدة الزمنية</label>
+        <div class="range-row">
+          <input id="duration" name="duration" type="range" min="5" max="120" step="5"
+                 value="{{ draft.duration }}" data-range="#duration-value" data-suffix=" دقيقة">
+          <output class="range-value" id="duration-value">{{ draft.duration }} دقيقة</output>
+        </div>
+      </div>
+
+      <div class="field field--full">
+        <span class="field-label" id="difficulty-label">مستوى الصعوبة</span>
+        <div class="segmented" role="radiogroup" aria-labelledby="difficulty-label">
+          {% for value, label in [('سهل','سهل'), ('متوسط','متوسط'), ('صعب','صعب'), ('متدرج','متدرّج')] %}
+            <input type="radio" id="difficulty-{{ loop.index }}" name="difficulty" value="{{ value }}"
+                   {{ 'checked' if value == 'متوسط' else '' }}>
+            <label for="difficulty-{{ loop.index }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="field field--full">
+        <label for="objectives">أهداف تعليمية (اختياري)</label>
+        <textarea id="objectives" name="objectives" rows="4"
+                  placeholder="هدف في كل سطر. إن تركتها فارغة، تُستنتج من الموضوع والمستوى."></textarea>
+      </div>
+
+      <div class="field field--full">
+        <label for="teacher_instructions">تعليمات إضافية للمعلّم (اختياري)</label>
+        <textarea id="teacher_instructions" name="teacher_instructions" rows="3"
+                  placeholder="مثال: اعتمد على تجربة بسيطة بمواد متوفرة، وراعِ تلاميذ ذوي صعوبات القراءة."></textarea>
+      </div>
+
+      <div class="field field--full">
+        <label class="chip-check" style="display:inline-flex; align-items:center; gap:.5rem">
+          <input type="checkbox" id="use_documents" name="use_documents" value="1" checked>
+          <span>{{ icon('folder') }} استعمال وثائق قاعدة المعرفة</span>
+        </label>
+      </div>
+
+      {% if documents %}
+        <div class="field field--full" id="sources-field">
+          <span class="field-label">وثائق مرجعية (اختياري)</span>
+          <div class="chip-set">
+            {% for document in documents %}
+              <label class="chip-check">
+                <input type="checkbox" name="source_document_ids" value="{{ document.id }}">
+                <span>{{ document.title|short(38) }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <span class="hint">إن لم تختر شيئاً، تُستعمل كل الوثائق المتوافقة مع المادة والمستوى.</span>
+        </div>
+      {% else %}
+        <div class="field field--full">
+          <div class="alert alert--info" style="margin:0">
+            {{ icon('folder') }}
+            <div>
+              <strong>لا توجد وثائق بعد</strong>
+              <span>يمكنك التوليد دون مصادر، أو <a href="{{ url_for('documents.documents_page') }}">رفع وثيقة أولاً</a> لتحسين الدقة.</span>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="alert alert--danger" id="create-error" data-form-error role="alert" aria-live="assertive" hidden style="margin-block-start:1rem"></div>
+
+    <div class="btn-row" style="margin-block-start:1.4rem">
+      <button class="btn btn--primary btn--lg" type="submit">
+        {{ icon('sparkles') }}<span>ولّد الجذاذة</span>
+      </button>
+      <a class="btn btn--ghost" href="{{ url_for('main.dashboard') }}">إلغاء</a>
+    </div>
+  </form>
+
+  <aside class="stack" style="--stack:1.25rem">
+    <section class="card reveal" aria-labelledby="how-title">
+      <div class="card-head">
+        <h2 id="how-title" class="marker"> كيف تعمل؟</h2>
+      </div>
+      <ol class="gen-steps" style="margin:0; text-align:start">
+        <li class="gen-step is-done"><span class="bullet">1</span><span>نقرأ طلبك ونحدّد الأهداف المناسبة للمستوى.</span></li>
+        <li class="gen-step is-done"><span class="bullet">2</span><span>نستخرج المقاطع الأقرب من وثائقك المرجعية.</span></li>
+        <li class="gen-step is-done"><span class="bullet">3</span><span>نبني 21 قسماً بمراحل خمس وتقويم كامل.</span></li>
+        <li class="gen-step is-done"><span class="bullet">4</span><span>نتحقّق من المدة واللغة والسلامة، ثم نحفظ.</span></li>
+      </ol>
+    </section>
+
+    <section class="card card--ink reveal" aria-labelledby="tips-title">
+      <div class="card-head">
+        <h2 id="tips-title" class="marker" style="color:#fff"> نصائح الجودة</h2>
+      </div>
+      <ul class="bullets" style="color: var(--board-mute)">
+        <li>اكتب الموضوع كما ورد في المنهاج الرسمي.</li>
+        <li>أضف وثيقة رسمية واحدة على الأقل لتحسين الإسناد.</li>
+        <li>حدّد أهدافاً إجرائية إن كانت لديك.</li>
+        <li>راجع دائماً التجارب قبل تنفيذها في القسم.</li>
+      </ul>
+    </section>
+  </aside>
 </div>
 
-<!-- Error Alert -->
-<div class="alert alert-danger d-none mt-3" id="errorAlert" role="alert">
-    <h4 class="alert-heading">خطأ</h4>
-    <p id="errorMessage"></p>
-    <hr>
-    <button type="button" class="btn btn-outline-danger" onclick="$('#errorAlert').addClass('d-none')">إغلاق</button>
-</div>
-
-<!-- Validation Errors -->
-<div class="alert alert-warning d-none mt-3" id="validationAlert" role="alert">
-    <h4 class="alert-heading">أخطاء في التحقق</h4>
-    <ul id="validationErrors"></ul>
-    <hr>
-    <button type="button" class="btn btn-outline-warning" onclick="$('#validationAlert').addClass('d-none')">إغلاق</button>
+<div class="gen-overlay" id="gen-overlay" hidden>
+  <div class="gen-panel" role="dialog" aria-modal="true" aria-labelledby="gen-title">
+    <div class="spinner" style="width:34px;height:34px;margin:0 auto 1rem;border-width:3px"></div>
+    <h2 id="gen-title" tabindex="-1">نبني جذاذتك الآن</h2>
+    <p class="muted small">قد يستغرق التوليد من 20 إلى 60 ثانية حسب النموذج المتاح.</p>
+    <div class="progress" role="progressbar" aria-label="نسبة التقدّم" aria-valuemin="0" aria-valuemax="100" aria-valuenow="8" style="margin-block:1.1rem"><span id="gen-progress" style="width:8%"></span></div>
+    <ul class="gen-steps" id="gen-steps">
+      <li class="gen-step is-active" data-step="0"><span class="bullet">1</span><span>تحليل الطلب واختيار الأهداف</span></li>
+      <li class="gen-step" data-step="1"><span class="bullet">2</span><span>استرجاع المصادر من قاعدة المعرفة</span></li>
+      <li class="gen-step" data-step="2"><span class="bullet">3</span><span>بناء أقسام الجذاذة ومراحلها</span></li>
+      <li class="gen-step" data-step="3"><span class="bullet">4</span><span>التحقق البيداغوجي وحفظ الجذاذة</span></li>
+    </ul>
+    <p class="small muted" style="margin-block-start:1rem" id="gen-note">لا تغلق الصفحة.</p>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-$(document).ready(function() {
-    $('#lessonForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        // Get form data
-        const formData = {
-            subject: $('#subject').val(),
-            educational_level: $('#educational_level').val(),
-            topic: $('#topic').val(),
-            duration: parseInt($('#duration').val()),
-            difficulty: $('#difficulty').val(),
-            language: $('#language').val(),
-            teacher_instructions: $('#teacher_instructions').val() || null,
-            objectives: []
-        };
-        
-        // Parse objectives (one per line)
-        const objectivesText = $('#objectives').val();
-        if (objectivesText.trim()) {
-            formData.objectives = objectivesText.split('\n').filter(obj => obj.trim());
-        }
-        
-        // Show loading state
-        $('#generateBtn').prop('disabled', true);
-        $('#loadingSpinner').removeClass('d-none');
-        $('#btnText').text('جاري الإنشاء...');
-        
-        // Hide alerts
-        $('#errorAlert').addClass('d-none');
-        $('#validationAlert').addClass('d-none');
-        
-        // Send API request
-        $.ajax({
-            url: '/api/lessons/generate',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(formData),
-            success: function(response) {
-                if (response.success) {
-                    // Store lesson plan in session storage for the result page
-                    sessionStorage.setItem('lessonPlan', JSON.stringify(response.lesson_plan));
-                    sessionStorage.setItem('retrievedContextCount', response.retrieved_context_count);
-                    sessionStorage.setItem('lessonLanguage', formData.language);
-                    
-                    // Redirect to result page (will load from session storage)
-                    window.location.href = '/lesson/result';
-                } else {
-                    // Show error
-                    if (response.validation_errors && response.validation_errors.length > 0) {
-                        $('#validationErrors').empty();
-                        response.validation_errors.forEach(function(error) {
-                            $('#validationErrors').append('<li>' + error + '</li>');
-                        });
-                        $('#validationAlert').removeClass('d-none');
-                    } else {
-                        $('#errorMessage').text(response.error || response.error_message || 'تعذر إنشاء الجذاذة. يرجى المحاولة مرة أخرى.');
-                        $('#errorAlert').removeClass('d-none');
-                    }
-                    
-                    // Reset button
-                    $('#generateBtn').prop('disabled', false);
-                    $('#loadingSpinner').addClass('d-none');
-                    $('#btnText').text('إنشاء الجذاذة');
-                }
-            },
-            error: function(xhr, status, error) {
-                const response = xhr.responseJSON;
-                if (response && response.validation_errors && response.validation_errors.length > 0) {
-                    $('#validationErrors').empty();
-                    response.validation_errors.forEach(function(validationError) {
-                        $('#validationErrors').append('<li>' + validationError + '</li>');
-                    });
-                    $('#validationAlert').removeClass('d-none');
-                } else {
-                    $('#errorMessage').text(
-                        (response && (response.error || response.error_message)) ||
-                        'حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.'
-                    );
-                    $('#errorAlert').removeClass('d-none');
-                }
-                
-                // Reset button
-                $('#generateBtn').prop('disabled', false);
-                $('#loadingSpinner').addClass('d-none');
-                $('#btnText').text('إنشاء الجذاذة');
-            }
-        });
-    });
-});
-</script>
+<script src="{{ static_url('js/create.js') }}" defer></script>
 {% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>أداة تحضير، لا بديل عن المعلّم</h1>
+    <p class="lede">
+      بُنيت هذه المنصة لتختصر وقت التحضير الإداري، وتبقي القرار البيداغوجي بيد المعلّم.
+    </p>
+  </div>
+</div>
+
+<div class="split">
+  <div class="stack" style="--stack:1.25rem">
+    <section class="card reveal">
+      <h2 class="marker"> ما تفعله</h2>
+      <ul class="bullets">
+        <li>تنتج جذاذة من 21 قسماً بمراحل خمس، وفق العرف البيداغوجي التونسي.</li>
+        <li>تستند إلى وثائقك المرجعية عند توفّرها، وتعلن بوضوح عند نقص المصادر.</li>
+        <li>تولّد تمارين وتقويماً مع الإجابات والشرح.</li>
+        <li>تصدّر الجذاذة إلى Word أو نسخة طباعة نظيفة.</li>
+      </ul>
+    </section>
+
+    <section class="card reveal">
+      <h2 class="marker"> ما لا تفعله</h2>
+      <ul class="bullets">
+        <li>لا تستبدل الحكم البيداغوجي: راجع كل محتوى قبل استعماله.</li>
+        <li>لا تضمن دقة علمية مطلقة خارج المصادر المرفقة.</li>
+        <li>لا تحفظ صوراً أو بيانات شخصية عن التلاميذ.</li>
+        <li>لا تتصل بأي خدمة غير Gemini.</li>
+      </ul>
+    </section>
+
+    <section class="card card--ink reveal">
+      <h2 class="marker" style="color:#fff"> مبدأ التصميم</h2>
+      <p style="color:var(--board-mute); margin:0">
+        «الدفتر الرسمي»: ورقة دافئة، حبر واضح، وختم أزرق. لا زخرفة تُشتّت، ولا زرّ يخفي وظيفته.
+        كل قسم مرقّم، وكل مصدر مذكور، وكل مدة محسوبة.
+      </p>
+    </section>
+  </div>
+
+  <aside class="stack" style="--stack:1.25rem">
+    <section class="card reveal">
+      <h2 class="marker"> التقنيات</h2>
+      <div class="row" style="gap:.35rem">
+        <span class="chip chip--stamp">Flask</span>
+        <span class="chip chip--stamp">SQLite</span>
+        <span class="chip chip--stamp">ChromaDB</span>
+        <span class="chip chip--stamp">Gemini</span>
+        <span class="chip">Pydantic</span>
+        <span class="chip">python-docx</span>
+      </div>
+      <p class="small muted" style="margin-block-start:.9rem">
+        واجهة مكتوبة يدوياً بلا أطر CSS، وخطوط عربية من Google Fonts.
+      </p>
+    </section>
+
+    <section class="card reveal">
+      <h2 class="marker"> الخصوصية</h2>
+      <p class="small muted" style="margin:0">
+        تُخزَّن الجذاذات والوثائق محلياً في قاعدة SQLite ومجلدات المشروع.
+        يُرسل نص الطلب والمقاطع المسترجعة فقط إلى Gemini للتوليد.
+      </p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

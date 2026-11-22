@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon %}
+
+{% block head %}
+<style>
+  .print-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-block-end: 2px solid var(--ink); padding-block-end: .6rem; margin-block-end: 1rem; }
+  .print-head h1 { font-size: 1.4rem; margin: 0; }
+  .print-meta { font-size: .85rem; color: var(--ink-soft); }
+  .print-table { width: 100%; border-collapse: collapse; font-size: .86rem; margin-block: .4rem; }
+  .print-table th, .print-table td { border: 1px solid var(--line-strong); padding: .45rem .55rem; vertical-align: top; text-align: start; }
+  .print-table th { background: var(--paper-sunk); font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not plan %}
+  <p>محتوى الجذاذة غير صالح.</p>
+{% else %}
+<div class="row row--between no-print" style="margin-block-end:1rem">
+  <a class="btn btn--ghost btn--sm" href="{{ url_for('main.lesson_detail', lesson_id=lesson.id) }}">{{ icon('chevron-right') }} رجوع</a>
+  <button class="btn btn--primary btn--sm" type="button" data-print>{{ icon('print') }} طباعة</button>
+</div>
+
+<article class="sheet" style="box-shadow:none">
+  <div class="sheet-body">
+    <div class="print-head">
+      <div>
+        <div class="print-meta">{{ app_name_ar }}</div>
+        <h1>{{ plan.title }}</h1>
+        <div class="print-meta">
+          {{ plan.subject }} · {{ plan.educational_level }} · {{ plan.duration }} دقيقة
+        </div>
+      </div>
+      <div class="print-meta" style="text-align:end">
+        <div>التاريخ: {{ lesson.created_at|ar_date }}</div>
+        <div>المعلّم/ة: ................</div>
+      </div>
+    </div>
+
+    <p><strong>الكفاءة المستهدفة:</strong> {{ plan.competency or '—' }}</p>
+
+    <table class="print-table">
+      <tr><th scope="row" style="width:22%">الأهداف التعليمية</th><td>
+        <ul style="margin:0; padding-inline-start:1.1rem">{% for item in plan.learning_objectives %}<li>{{ item }}</li>{% endfor %}</ul>
+      </td></tr>
+      <tr><th scope="row">المكتسبات السابقة</th><td>
+        <ul style="margin:0; padding-inline-start:1.1rem">{% for item in plan.prerequisites %}<li>{{ item }}</li>{% endfor %}</ul>
+      </td></tr>
+      <tr><th scope="row">الوسائل</th><td>{{ plan.materials|join(' · ') or '—' }}</td></tr>
+      <tr><th scope="row">المفاهيم</th><td>{{ plan.key_concepts|join(' · ') or '—' }}</td></tr>
+    </table>
+
+    <p><strong>وضعية الانطلاق:</strong> {{ plan.introduction or '—' }}</p>
+
+    <table class="print-table">
+      <thead>
+        <tr><th scope="col" style="width:16%">المرحلة</th><th scope="col" style="width:8%">المدة</th><th scope="col">أنشطة المعلّم</th><th scope="col">أنشطة المتعلّم</th><th scope="col">أسئلة توجيهية</th></tr>
+      </thead>
+      <tbody>
+        {% for phase in plan.lesson_phases %}
+          <tr>
+            <td><strong>{{ phase.name }}</strong></td>
+            <td>{{ phase.duration }} د</td>
+            <td>{% for item in phase.teacher_actions %}<div>• {{ item }}</div>{% endfor %}</td>
+            <td>{% for item in phase.learner_actions %}<div>• {{ item }}</div>{% endfor %}</td>
+            <td>{% for item in phase.guiding_questions %}<div>• {{ item }}</div>{% endfor %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if plan.experiments %}
+      <p><strong>التجارب:</strong></p>
+      {% for experiment in plan.experiments %}
+        <table class="print-table">
+          <tr><th scope="row" style="width:22%">{{ experiment.title }}</th><td>
+            <div><strong>المواد:</strong> {{ experiment.materials|join('، ') }}</div>
+            <div><strong>الخطوات:</strong> {{ experiment.steps|join(' / ') }}</div>
+            <div><strong>السلامة:</strong> {{ experiment.safety_notes|join('، ') or '—' }}</div>
+            <div><strong>الملاحظة:</strong> {{ experiment.expected_observation or '—' }}</div>
+          </td></tr>
+        </table>
+      {% endfor %}
+    {% endif %}
+
+    <table class="print-table">
+      <tr><th scope="row" style="width:22%">التقويم التكويني</th><td>
+        {% for item in plan.formative_assessment.items %}
+          <div>{{ loop.index }}. {{ item.question }} <span class="muted">({{ item.answer }})</span></div>
+        {% else %}—{% endfor %}
+      </td></tr>
+      <tr><th scope="row">التقويم النهائي</th><td>
+        {% for item in plan.summative_assessment.items %}
+          <div>{{ loop.index }}. {{ item.question }} <span class="muted">({{ item.answer }})</span></div>
+        {% else %}—{% endfor %}
+      </td></tr>
+      <tr><th scope="row">الدعم والعلاج</th><td>{{ plan.remediation or '—' }}</td></tr>
+      <tr><th scope="row">الخلاصة</th><td>{{ plan.summary or '—' }}</td></tr>
+      <tr><th scope="row">النشاط المنزلي</th><td>{{ plan.homework or '—' }}</td></tr>
+    </table>
+
+    {% if plan.sources %}
+      <p class="small"><strong>المصادر:</strong> {{ plan.sources|join(' · ') }}</p>
+    {% endif %}
+  </div>
+</article>
+{% endif %}
+{% endblock %}

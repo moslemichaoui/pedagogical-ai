@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon %}
+
+{% block content %}
+<section class="empty reveal" style="margin-block-start:2rem">
+  <div class="empty-icon" style="color:var(--saffron-deep)">{{ icon('upload') }}</div>
+  <h1 style="font-size:clamp(2.4rem,7vw,4rem); margin-block-end:.2rem">413</h1>
+  <h2>الملف كبير جداً</h2>
+  <p>{{ message or 'حجم الملف يتجاوز الحد المسموح.' }}</p>
+  <div class="btn-row" style="justify-content:center">
+    <a class="btn btn--primary" href="{{ url_for('documents.documents_page') }}">{{ icon('folder') }} قاعدة المعرفة</a>
+  </div>
+</section>
+{% endblock %}

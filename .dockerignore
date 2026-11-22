@@ -1,0 +1,36 @@
+# Local environments and bytecode
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# VCS / CI metadata
+.git/
+.gitignore
+.github/
+
+# Secrets (never ship local .env files in an image)
+.env
+.env.*
+
+# Tests and ad-hoc test scripts
+tests/
+test_*.py
+
+# Runtime state - mounted as volumes / recreated inside the image
+instance/
+*.db
+*.db3
+*.sqlite
+chromadb_data/
+uploads/
+exports/
+*.log
+
+# Scratch / editor / frontend artifacts
+screenshots/
+node_modules/
+.DS_Store

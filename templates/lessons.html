@@ -1,0 +1,79 @@
+﻿{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon, empty_state, pagination %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>جذاذاتي</h1>
+    <p class="lede">{{ result.total }} جذاذة محفوظة. ابحث، صفِّ، وأعد الاستعمال.</p>
+  </div>
+  <a class="btn btn--primary" href="{{ url_for('main.create_lesson') }}">{{ icon('plus') }} جذاذة جديدة</a>
+</div>
+
+<form class="filter-bar reveal" method="get" action="{{ url_for('main.lessons_library') }}" role="search">
+  <div class="field">
+    <label for="q">بحث</label>
+    <input id="q" name="q" type="search" value="{{ filters.q }}" placeholder="عنوان أو موضوع…">
+  </div>
+  <div class="field">
+    <label for="subject">المادة</label>
+    <select id="subject" name="subject">
+      <option value="">كل المواد</option>
+      {% for subject in subjects %}
+        <option value="{{ subject }}" {{ 'selected' if subject == filters.subject else '' }}>{{ subject }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="level">المستوى</label>
+    <select id="level" name="level">
+      <option value="">كل المستويات</option>
+      {% for level in levels %}
+        <option value="{{ level }}" {{ 'selected' if level == filters.level else '' }}>{{ level }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn btn--ink" type="submit">{{ icon('search') }} تصفية</button>
+  {% if filters.q or filters.subject or filters.level %}
+    <a class="btn btn--ghost" href="{{ url_for('main.lessons_library') }}">مسح</a>
+  {% endif %}
+</form>
+
+{% if result['items'] %}
+  <div class="lesson-grid">
+    {% for lesson in result['items'] %}
+      <a class="lesson-card reveal" href="{{ url_for('main.lesson_detail', lesson_id=lesson.id) }}" data-row>
+        <div class="meta">
+          <span class="chip chip--stamp">{{ lesson.subject or 'غير محدد' }}</span>
+          <span class="chip">{{ lesson.educational_level or '—' }}</span>
+        </div>
+        <h2>{{ lesson.title }}</h2>
+        <div class="meta">
+          <span class="chip chip--ghost">{{ icon('clock') }} {{ lesson.duration|minutes }}</span>
+          <span class="chip chip--ghost">{{ icon('layers') }} {{ lesson.assessment_count }} تقويم</span>
+          {% if lesson.validation_errors %}
+            <span class="chip chip--warn">{{ lesson.validation_errors|length }} ملاحظة</span>
+          {% endif %}
+        </div>
+        <div class="foot">
+          <span>{{ lesson.created_at|ar_date }}</span>
+          <span class="score {{ 'is-warn' if lesson.validation_errors else '' }}">
+            {{ icon('check') }} {{ 'جاهزة' if not lesson.validation_errors else 'للمراجعة' }}
+          </span>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+
+  {{ pagination(result, 'main.lessons_library', {'q': filters.q, 'subject': filters.subject, 'level': filters.level}) }}
+{% else %}
+  {% set has_filters = filters.q or filters.subject or filters.level %}
+  {{ empty_state(
+    'لا توجد نتائج' if has_filters else 'لا توجد جذاذات بعد',
+    'جرّب مسح عوامل التصفية أو ابدأ جذاذة جديدة.' if has_filters else 'ابدأ بتحضير أول درس، وستجد كل ما تُنتجه محفوظاً هنا.',
+    'جذاذة جديدة',
+    url_for('main.create_lesson'),
+    'book'
+  ) }}
+{% endif %}
+{% endblock %}

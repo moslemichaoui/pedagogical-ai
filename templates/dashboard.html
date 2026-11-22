@@ -1,63 +1,167 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon, empty_state %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">لوحة التحكم</h1>
-</div>
+<section class="hero reveal">
+  <div class="hero-grid">
+    <div>
+      <h1>جذاذة درس كاملة، جاهزة للطباعة، في دقائق.</h1>
+      <p class="lede">
+        اكتب الموضوع والمستوى، وأضف وثائقك البيداغوجية. تتولّى المنصة بناء الأهداف،
+        المراحل، التجارب، التقويم، والدعم — وفق مناهج المرحلة الابتدائية التونسية.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn--primary btn--lg" href="{{ url_for('main.create_lesson') }}">
+          {{ icon('sparkles') }}<span>ابدأ تحضير درس</span>
+        </a>
+        <a class="btn btn--ghost btn--lg" href="{{ url_for('main.lessons_library') }}"
+           style="--btn-fg: var(--board-ink); --btn-border: rgba(234,242,230,.35); --btn-bg: transparent">
+          {{ icon('book') }}<span>جذاذاتي</span>
+        </a>
+      </div>
+      {% if not ai_configured %}
+        <p class="small" style="margin-block-start:1.1rem; color: var(--saffron)">
+          {{ icon('alert') }} لم يُضبط مفتاح Gemini بعد — التوليد سيعرض إرشادات الإعداد.
+        </p>
+      {% endif %}
+    </div>
 
-<div class="container">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3>مرحباً بك في منصة التربية الذكية</h3>
-                </div>
-                <div class="card-body">
-                    <p>هذه هي بداية منصتك التعليمية المدعومة بالذكاء الاصطناعي.</p>
-                    <p>استخدم القائمة الجانبية للتنقل بين أقسام المنصة.</p>
-                    <div class="mt-3">
-                        <a href="/create-lesson" class="btn btn-primary btn-lg">
-                            إنشاء جذاذة جديدة
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="sheet-preview" aria-hidden="true">
+      <div class="row row--between" style="margin-block-end:.6rem">
+        <span class="chip chip--stamp">جذاذة نموذجية</span>
+        <span class="small muted">الإيقاظ العلمي</span>
+      </div>
+      <p class="sheet-preview-title">الوسط الحيوي: النباتات من حولنا</p>
+      <div class="sheet-line w-90"></div>
+      <div class="sheet-line w-70"></div>
+      <div class="sheet-line w-90"></div>
+      <div class="sheet-line w-50"></div>
+      <div class="row" style="margin-block-start:.8rem; gap:.35rem">
+        <span class="chip">السنة الرابعة</span>
+        <span class="chip">45 دقيقة</span>
+        <span class="chip">5 مراحل</span>
+      </div>
+      <span class="sheet-stamp">مصادق عليها</span>
     </div>
-    
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>البدء</h5>
-                </div>
-                <div class="card-body">
-                    <ol>
-                        <li>إنشاء جذاذة درس جديدة</li>
-                        <li>إضافة المواد التعليمية</li>
-                        <li>إنشاء تمارين بالذكاء الاصطناعي</li>
-                        <li>تتبع تقدم الطلاب</li>
-                    </ol>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>مميزات المنصة</h5>
-                </div>
-                <div class="card-body">
-                    <ul>
-                        <li>إنشاء المحتوى التعليمي بالذكاء الاصطناعي</li>
-                        <li>مواد تعليمية تفاعلية</li>
-                        <li>توليد التقويمات الآلي</li>
-                        <li>تتبع التقدم والتحليلات</li>
-                        <li>مسارات تعلم مخصصة</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+  </div>
+</section>
+
+<section class="stat-grid section-gap reveal" aria-label="إحصاءات سريعة">
+  <div class="stat">
+    <div class="stat-label">{{ icon('book') }} جذاذات محفوظة</div>
+    <div class="stat-value">{{ overview.lessons }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">{{ icon('folder') }} وثائق مرجعية</div>
+    <div class="stat-value">{{ overview.documents }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">{{ icon('layers') }} مقاطع مفهرسة</div>
+    <div class="stat-value">{{ overview.chunks }}</div>
+  </div>
+  <div class="stat stat--accent">
+    <div class="stat-label">{{ icon('sparkles') }} توليدات هذا الأسبوع</div>
+    <div class="stat-value">
+      {{ overview.runs_week }}
+      {% if overview.success_rate is not none %}<small>{{ overview.success_rate }}% نجاح</small>{% endif %}
     </div>
+  </div>
+</section>
+
+<div class="split section-gap">
+  <section class="card card--stamp reveal" aria-labelledby="recent-title">
+    <div class="card-head">
+      <h2 id="recent-title" class="marker"> آخر الجذاذات</h2>
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('main.lessons_library') }}">الكل {{ icon('chevron-left') }}</a>
+    </div>
+
+    {% if recent_lessons %}
+      <ul class="list">
+        {% for lesson in recent_lessons %}
+          <li data-row>
+            <a class="lesson-row" href="{{ url_for('main.lesson_detail', lesson_id=lesson.id) }}"
+               style="display:flex; align-items:center; gap:.85rem; padding:.85rem 0; text-decoration:none; color:inherit">
+              <span class="grow">
+                <strong style="display:block; font-family:var(--font-display); font-size:.98rem">{{ lesson.title }}</strong>
+                <span class="small muted">{{ lesson.subject or '—' }} · {{ lesson.educational_level or '—' }} · {{ lesson.duration|minutes }}</span>
+              </span>
+              <span class="chip chip--ghost">{{ lesson.created_at|ar_date }}</span>
+              {{ icon('chevron-left') }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {{ empty_state(
+        'لا توجد جذاذات بعد',
+        'ابدأ بتحضير أول درس، وستجد كل ما تُنتجه محفوظاً هنا.',
+        'حضّر درساً الآن',
+        url_for('main.create_lesson'),
+        'sparkles'
+      ) }}
+    {% endif %}
+  </section>
+
+  <div class="stack" style="--stack:1.25rem">
+    <section class="card reveal" aria-labelledby="subjects-title">
+      <div class="card-head">
+        <h2 id="subjects-title" class="marker"> توزيع المواد</h2>
+      </div>
+      {% if subjects %}
+        {% for item in subjects %}
+          <div class="bar-row">
+            <span class="bar-label">{{ item.subject }}</span>
+            <span class="bar-count">{{ item.count }}</span>
+            <span class="bar-track"><span class="bar-fill" style="width: {{ item.share }}%"></span></span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted small" style="margin:0">ستظهر النسب بعد إنشاء أول جذاذة.</p>
+      {% endif %}
+    </section>
+
+    <section class="card card--ink reveal" aria-labelledby="activity-title">
+      <div class="card-head">
+        <h2 id="activity-title" class="marker" style="color:#fff"> نشاط آخر 10 أيام</h2>
+      </div>
+      {% set peak = (activity | map(attribute='count') | max) or 1 %}
+      <div class="activity" role="img" aria-label="عدد الجذاذات في آخر 10 أيام: {{ activity|map(attribute='count')|join('، ') }}">
+        {% for day in activity %}
+          <span class="{{ 'has-data' if day.count else '' }}"
+                style="height: {{ (8 + (day.count / peak * 60))|round|int }}%"
+                title="{{ day.date }} · {{ day.count }}"></span>
+        {% endfor %}
+      </div>
+      <p class="small muted" style="margin-block: .6rem 0">
+        {{ icon('chart') }} {{ overview.exercises }} تمريناً و{{ overview.assessments }} سؤال تقويم محفوظاً.
+      </p>
+    </section>
+
+    <section class="card reveal" aria-labelledby="docs-title">
+      <div class="card-head">
+        <h2 id="docs-title" class="marker"> قاعدة المعرفة</h2>
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('documents.documents_page') }}">إدارة</a>
+      </div>
+      {% if recent_documents %}
+        <ul class="list">
+          {% for doc in recent_documents %}
+            <li style="padding:.6rem 0">
+              <a href="{{ url_for('documents.document_detail', document_id=doc.document_id) }}"
+                 style="display:flex; align-items:center; gap:.6rem; text-decoration:none; color:inherit">
+                {{ icon('file') }}
+                <span class="grow truncate">{{ doc.title }}</span>
+                <span class="chip chip--ghost">{{ doc.number_of_chunks }} مقطع</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted small" style="margin:0">
+          أضف وثيقة رسمية أو ملخّصاً لتستند إليه الجذاذات.
+          <a href="{{ url_for('documents.documents_page') }}">رفع وثيقة</a>
+        </p>
+      {% endif %}
+    </section>
+  </div>
 </div>
 {% endblock %}

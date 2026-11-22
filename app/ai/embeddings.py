@@ -1,156 +1,167 @@
-"""Embedding provider abstraction for the Pedagogical AI platform."""
-import hashlib
-import os
-from abc import ABC, abstractmethod
-from typing import List, Optional
+"""Embedding providers backed by Google Gemini.
 
-EMBEDDING_DIMENSION = 768
-PLACEHOLDER_API_KEYS = {'', 'your-gemini-api-key-here'}
+Embeddings are required for retrieval. When no key is configured the provider
+reports itself unavailable instead of silently returning pseudo-random vectors,
+so callers can degrade to lexical search with an honest message.
+"""
+from __future__ import annotations
+
+import hashlib
+import logging
+import math
+from abc import ABC, abstractmethod
+from typing import Iterable, List, Optional
+
+from app.utils.config_values import config_value
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_DIMENSION = 768
+MOCK_DIMENSION = 256
+
+
+class EmbeddingError(RuntimeError):
+    """Raised when embeddings cannot be produced."""
 
 
 class EmbeddingProvider(ABC):
-    """Abstract base class for embedding providers."""
+    name = "base"
+    requires_network = True
 
     @abstractmethod
-    def embed(self, text: str) -> List[float]:
-        pass
+    def embed(self, text: str) -> List[float]: ...
+
+    def embed_batch(self, texts: Iterable[str]) -> List[List[float]]:
+        return [self.embed(text) for text in texts]
 
     @abstractmethod
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        pass
+    def get_dimension(self) -> int: ...
 
     @abstractmethod
-    def get_dimension(self) -> int:
-        pass
-
-    @abstractmethod
-    def is_available(self) -> bool:
-        pass
-
-
-def _usable_gemini_key(api_key: Optional[str]) -> bool:
-    return bool(api_key) and api_key.strip() not in PLACEHOLDER_API_KEYS
+    def is_available(self) -> bool: ...
 
 
 class GeminiEmbeddingProvider(EmbeddingProvider):
-    """Google Gemini embedding provider."""
+    """Gemini embeddings with key rotation."""
 
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        self.api_key = api_key or os.environ.get('GEMINI_API_KEY')
-        self.model = model or os.environ.get('GEMINI_EMBEDDING_MODEL') or 'embedding-001'
-        self._client = None
-        self._dimension = EMBEDDING_DIMENSION
+    name = "gemini"
 
-    def _get_client(self):
-        if self._client is not None:
-            return self._client
+    def __init__(
+        self,
+        api_keys: Optional[List[str]] = None,
+        model: Optional[str] = None,
+        timeout: int = 30,
+    ) -> None:
+        if api_keys is None or model is None:
+            api_keys = config_value("GEMINI_API_KEYS") if api_keys is None else api_keys
+            model = config_value("GEMINI_EMBEDDING_MODEL") if model is None else model
+        self.api_keys = [key for key in (api_keys or []) if key]
+        self.model = model or "text-embedding-004"
+        self.timeout = timeout
+        self._clients: dict[str, object] = {}
+        self._dimension = DEFAULT_DIMENSION
 
-        if not _usable_gemini_key(self.api_key):
-            raise RuntimeError(
-                "GEMINI_API_KEY is not set. "
-                "Please set the GEMINI_API_KEY environment variable."
-            )
-
+    def _client(self, api_key: str):
+        client = self._clients.get(api_key)
+        if client is not None:
+            return client
         try:
             from google import genai
-            self._client = genai.Client(api_key=self.api_key)
-            return self._client
-        except ImportError as e:
-            raise RuntimeError(
-                "google-genai package not installed. "
-                "Please install it with: pip install google-genai"
-            ) from e
+            from google.genai import types
+        except ImportError as exc:  # pragma: no cover
+            raise EmbeddingError("حزمة google-genai غير مثبّتة.") from exc
+        options = None
+        try:
+            options = types.HttpOptions(timeout=self.timeout * 1000)
+        except Exception:
+            options = None
+        try:
+            client = genai.Client(api_key=api_key, http_options=options) if options else genai.Client(api_key=api_key)
+        except TypeError:
+            client = genai.Client(api_key=api_key)
+        self._clients[api_key] = client
+        return client
+
+    def _call(self, texts: List[str], task_type: str) -> List[List[float]]:
+        from google.genai import types
+
+        last_error: Optional[Exception] = None
+        for key in self.api_keys:
+            try:
+                client = self._client(key)
+                config = None
+                try:
+                    config = types.EmbedContentConfig(task_type=task_type)
+                except Exception:
+                    config = None
+                response = client.models.embed_content(
+                    model=self.model,
+                    contents=texts,
+                    config=config,
+                )
+                vectors = [list(item.values) for item in (response.embeddings or [])]
+                if len(vectors) != len(texts):
+                    raise EmbeddingError("عدد المتجهات لا يطابق عدد النصوص.")
+                if vectors:
+                    self._dimension = len(vectors[0])
+                return vectors
+            except Exception as exc:  # noqa: BLE001
+                last_error = exc
+                logger.warning("Embedding key failed: %s", str(exc)[:180])
+                continue
+        raise EmbeddingError(
+            "تعذّر حساب التمثيلات الرقمية (embeddings). تحقّق من مفتاح Gemini."
+        ) from last_error
 
     def embed(self, text: str) -> List[float]:
-        client = self._get_client()
-        try:
-            response = client.models.embed_content(
-                model=self.model,
-                contents=text
-            )
-            values = list(response.embeddings[0].values)
-            self._dimension = len(values)
-            return values
-        except Exception as e:
-            # Fall back to mock embeddings if API fails
-            import warnings
-            warnings.warn(f"Gemini embedding API failed: {e}. Falling back to mock embeddings.")
-            # Use the mock embedding logic inline
-            import hashlib
-            seed = hashlib.sha256((text or '').encode('utf-8')).digest()
-            vector = []
-            while len(vector) < EMBEDDING_DIMENSION:
-                seed = hashlib.sha256(seed).digest()
-                for i in range(0, len(seed), 4):
-                    if len(vector) >= EMBEDDING_DIMENSION:
-                        break
-                    raw = int.from_bytes(seed[i:i + 4], 'big')
-                    vector.append((raw / 0xFFFFFFFF) * 2 - 1)
-            norm = sum(x * x for x in vector) ** 0.5
-            if norm:
-                vector = [x / norm for x in vector]
-            return vector
+        return self._call([text or " "], "RETRIEVAL_DOCUMENT")[0]
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        if not texts:
+    def embed_batch(self, texts: Iterable[str]) -> List[List[float]]:
+        items = [text or " " for text in texts]
+        if not items:
             return []
+        return self._call(items, "RETRIEVAL_DOCUMENT")
 
-        client = self._get_client()
-        response = client.models.embed_content(
-            model=self.model,
-            contents=texts
-        )
-        vectors = [list(emb.values) for emb in response.embeddings]
-        if vectors:
-            self._dimension = len(vectors[0])
-        return vectors
+    def embed_query(self, text: str) -> List[float]:
+        return self._call([text or " "], "RETRIEVAL_QUERY")[0]
 
     def get_dimension(self) -> int:
         return self._dimension
 
     def is_available(self) -> bool:
-        return _usable_gemini_key(self.api_key)
+        return bool(self.api_keys)
 
 
 class MockEmbeddingProvider(EmbeddingProvider):
-    """Mock embedding provider for testing and development."""
+    """Deterministic hashed vectors, for tests only."""
+
+    name = "mock"
+    requires_network = False
 
     def embed(self, text: str) -> List[float]:
-        seed = hashlib.sha256((text or '').encode('utf-8')).digest()
-        vector = []
-        while len(vector) < EMBEDDING_DIMENSION:
-            seed = hashlib.sha256(seed).digest()
-            for i in range(0, len(seed), 4):
-                if len(vector) >= EMBEDDING_DIMENSION:
+        digest = hashlib.sha256((text or "").encode("utf-8")).digest()
+        raw: List[float] = []
+        while len(raw) < MOCK_DIMENSION:
+            digest = hashlib.sha256(digest).digest()
+            for index in range(0, len(digest), 2):
+                if len(raw) >= MOCK_DIMENSION:
                     break
-                raw = int.from_bytes(seed[i:i + 4], 'big')
-                vector.append((raw / 0xFFFFFFFF) * 2 - 1)
-
-        norm = sum(x * x for x in vector) ** 0.5
-        if norm:
-            vector = [x / norm for x in vector]
-        return vector
-
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        return [self.embed(text) for text in texts]
+                raw.append((int.from_bytes(digest[index : index + 2], "big") / 65535.0) * 2 - 1)
+        norm = math.sqrt(sum(value * value for value in raw)) or 1.0
+        return [value / norm for value in raw]
 
     def get_dimension(self) -> int:
-        return EMBEDDING_DIMENSION
+        return MOCK_DIMENSION
 
     def is_available(self) -> bool:
         return True
 
 
-def get_embedding_provider() -> EmbeddingProvider:
-    """Get Gemini embeddings when configured, otherwise a local mock."""
-    api_key = os.environ.get('GEMINI_API_KEY')
-    if _usable_gemini_key(api_key):
-        return GeminiEmbeddingProvider(api_key=api_key)
-    return MockEmbeddingProvider()
-
-
-def get_embedding_provider_safe() -> Optional[EmbeddingProvider]:
-    try:
-        return get_embedding_provider()
-    except Exception:
-        return None
+def get_embedding_provider(allow_mock: bool = False) -> Optional[EmbeddingProvider]:
+    """Return a real provider when configured, else a mock when allowed."""
+    provider = GeminiEmbeddingProvider()
+    if provider.is_available():
+        return provider
+    if allow_mock:
+        return MockEmbeddingProvider()
+    return None

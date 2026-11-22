@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon %}
+
+{% block content %}
+<div class="row row--between" style="margin-block-end:1rem">
+  <a class="btn btn--ghost btn--sm" href="{{ url_for('documents.documents_page') }}">{{ icon('chevron-right') }} قاعدة المعرفة</a>
+  <div class="btn-row">
+    <form method="post" action="{{ url_for('documents.reindex_document', document_id=document.id) }}"
+          data-fetch data-success="تمت إعادة فهرسة الوثيقة." style="display:inline">
+      <button class="btn btn--ghost btn--sm" type="submit">{{ icon('refresh') }} إعادة الفهرسة</button>
+    </form>
+    <button class="btn btn--danger btn--sm" type="button"
+            data-delete-url="{{ url_for('documents.delete_document', document_id=document.id) }}"
+            data-confirm-title="حذف الوثيقة"
+            data-confirm-text="سيتم حذف الوثيقة ومقاطعها نهائياً."
+            data-success-text="تم حذف الوثيقة."
+            data-redirect="{{ url_for('documents.documents_page') }}">
+      {{ icon('trash') }} حذف
+    </button>
+  </div>
+</div>
+
+<article class="card reveal" style="margin-block-end:1.25rem">
+  <div class="row row--between" style="align-items:flex-start">
+    <div>
+      <h1 style="margin-block:.3rem">{{ document.title }}</h1>
+      <div class="row" style="gap:.35rem">
+        <span class="chip chip--stamp">{{ meta.source_type_label }}</span>
+        {% if meta.subject %}<span class="chip">{{ meta.subject }}</span>{% endif %}
+        {% if meta.educational_level %}<span class="chip">{{ meta.educational_level }}</span>{% endif %}
+        <span class="chip chip--ghost">{{ meta.file_type }}</span>
+        <span class="chip chip--ghost">{{ meta.number_of_chunks }} مقطع</span>
+        <span class="chip {{ 'chip--ok' if meta.status == 'ready' else 'chip--warn' }}">{{ meta.status }}</span>
+      </div>
+    </div>
+    <div class="small muted" style="text-align:end">
+      <div>{{ icon('clock') }} {{ meta.created_at|ar_date(with_time=True) }}</div>
+      <div>{{ (meta.file_size / 1024)|round|int }} كيلوبايت</div>
+    </div>
+  </div>
+
+  {% if meta.error_message %}
+    <div class="alert alert--danger" style="margin-block-start:1rem">
+      {{ icon('alert') }}
+      <div><strong>فشل المعالجة</strong><span>{{ meta.error_message }}</span></div>
+    </div>
+  {% endif %}
+
+  <div class="table-wrap" style="margin-block-start:1.25rem">
+    <table>
+      <tbody>
+        <tr><th scope="row" style="width:22%">الوحدة / الفصل</th><td>{{ document.chapter or '—' }}</td></tr>
+        <tr><th scope="row">اللغة</th><td>{{ document.language or 'ar' }}</td></tr>
+        <tr><th scope="row">الصفحات</th><td>{{ document.page_numbers or '—' }}</td></tr>
+        <tr><th scope="row">عدد الأحرف</th><td class="num">{{ (document.text_content or '')|length }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</article>
+
+<section class="card reveal" aria-labelledby="chunks-title">
+  <div class="card-head">
+    <h2 id="chunks-title" class="marker"> المقاطع المفهرسة</h2>
+    <span class="chip chip--ghost">ترتيب زمني</span>
+  </div>
+
+  {% if chunks %}
+    <div class="stack" style="--stack:.6rem">
+      {% for chunk in chunks %}
+        <details class="phase">
+          <summary class="phase-head" style="cursor:pointer; list-style:none">
+            <strong>المقطع {{ chunk.chunk_index + 1 }}</strong>
+            <span class="row" style="gap:.35rem">
+              {% if chunk.page_number %}<span class="chip chip--ghost">صفحة {{ chunk.page_number }}</span>{% endif %}
+              <span class="chip chip--ghost">{{ chunk.text|length }} حرفاً</span>
+            </span>
+          </summary>
+          <div class="phase-body">
+            <p class="prose small" style="margin:0; white-space:pre-wrap">{{ chunk.text }}</p>
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted" style="margin:0">لا توجد مقاطع محفوظة لهذه الوثيقة.</p>
+  {% endif %}
+</section>
+{% endblock %}

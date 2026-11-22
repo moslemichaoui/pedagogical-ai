@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% from 'partials/_ui.html' import icon %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>الإعدادات والتشخيص</h1>
+    <p class="lede">حالة الذكاء الاصطناعي، قاعدة البيانات، وفهرس المتجهات — دون كشف أي مفتاح.</p>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('main.readyz') }}" target="_blank" rel="noopener">
+    {{ icon('external') }} فحص الجاهزية
+  </a>
+</div>
+
+<div class="split">
+  <div class="stack" style="--stack:1.25rem">
+    <section class="card card--stamp reveal" aria-labelledby="ai-title">
+      <div class="card-head">
+        <h2 id="ai-title" class="marker"> الذكاء الاصطناعي</h2>
+        {% if provider.status == 'configured' %}
+          <span class="chip chip--ok">مهيّأ</span>
+        {% else %}
+          <span class="chip chip--warn">غير مهيّأ</span>
+        {% endif %}
+      </div>
+
+      {% if provider.status == 'configured' %}
+        <p class="muted small" style="margin-block-end:.8rem">
+          {{ provider['keys'] }} مفتاح · {{ provider['configurations'] }} تركيبة احتياطية · {{ provider['models']|length }} نموذج.
+        </p>
+        <div class="row" style="gap:.35rem">
+          {% for model in provider.models %}<span class="chip chip--stamp">{{ model }}</span>{% endfor %}
+        </div>
+      {% else %}
+        <div class="alert alert--warn" style="margin:0">
+          {{ icon('alert') }}
+          <div>
+            <strong>لم يُضبط أي مفتاح</strong>
+            <span>التوليد معطّل حالياً. أضف المفتاح ثم أعد تشغيل التطبيق.</span>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="table-wrap" style="margin-block-start:1rem">
+        <table>
+          <tbody>
+            <tr><th scope="row" style="width:38%">نموذج التمثيل</th><td class="num">{{ diagnostics.embedding_model }}</td></tr>
+            <tr><th scope="row">مهلة الطلب</th><td class="num">{{ diagnostics.timeout }} ثانية</td></tr>
+            <tr><th scope="row">درجة الإبداع</th><td class="num">{{ diagnostics.temperature }}</td></tr>
+            <tr><th scope="row">عدد المقاطع المسترجعة</th><td class="num">{{ diagnostics.top_k }}</td></tr>
+            <tr><th scope="row">حد التشابه</th><td class="num">{{ diagnostics.min_similarity }}</td></tr>
+            <tr><th scope="row">حجم المقطع</th><td class="num">{{ diagnostics.chunk_size }} / تداخل {{ diagnostics.chunk_overlap }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card reveal" aria-labelledby="storage-title">
+      <div class="card-head">
+        <h2 id="storage-title" class="marker"> التخزين والفهرسة</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><th scope="row" style="width:38%">قاعدة البيانات</th><td>{{ diagnostics.database }}</td></tr>
+            <tr><th scope="row">المسار</th><td class="small" style="word-break:break-all">{{ diagnostics.database_path }}</td></tr>
+            <tr><th scope="row">الجذاذات</th><td class="num">{{ diagnostics.lessons }}</td></tr>
+            <tr><th scope="row">الوثائق</th><td class="num">{{ diagnostics.documents }}</td></tr>
+            <tr><th scope="row">فهرس المتجهات</th><td>
+              {% if diagnostics.vector.status == 'healthy' %}
+                <span class="chip chip--ok">{{ diagnostics.vector.chunks }} متجه</span>
+              {% else %}
+                <span class="chip chip--warn">{{ diagnostics.vector.error or 'غير متاح' }}</span>
+              {% endif %}
+            </td></tr>
+            <tr><th scope="row">مجلد الرفع</th><td class="small" style="word-break:break-all">{{ diagnostics.upload_folder }}</td></tr>
+            <tr><th scope="row">مجلد المتجهات</th><td class="small" style="word-break:break-all">{{ diagnostics.chroma_folder }}</td></tr>
+            <tr><th scope="row">حد الرفع</th><td class="num">{{ diagnostics.upload_limit_mb }} ميغابايت</td></tr>
+            <tr><th scope="row">حد التوليد/ساعة</th><td class="num">{{ diagnostics.rate_limit_generate }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <aside class="stack" style="--stack:1.25rem">
+    <section class="card card--ink reveal">
+      <h2 class="marker" style="color:#fff"> حالة الخدمات</h2>
+      <ul class="list" style="font-size:.9rem">
+        <li class="row row--between" style="padding-block:.55rem">
+          <span>الخادم</span><span class="chip chip--ok">يعمل</span>
+        </li>
+        <li class="row row--between" style="padding-block:.55rem">
+          <span>Gemini</span>
+          <span class="chip {{ 'chip--ok' if provider.status == 'configured' else 'chip--warn' }}">
+            {{ 'مهيّأ' if provider.status == 'configured' else 'غير مهيّأ' }}
+          </span>
+        </li>
+        <li class="row row--between" style="padding-block:.55rem">
+          <span>البحث الدلالي</span>
+          <span class="chip {{ 'chip--ok' if stats.embeddings_available else 'chip--warn' }}">
+            {{ 'مُفعّل' if stats.embeddings_available else 'نصّي' }}
+          </span>
+        </li>
+      </ul>
+      <p class="small" style="color:var(--board-mute); margin-block:1rem 0">
+        {{ icon('shield') }} لا تُرسل أي بيانات إلى خدمات خارجية غير Gemini، ولا تُسجَّل مفاتيحك في السجلات.
+      </p>
+    </section>
+
+    <section class="card reveal" aria-labelledby="setup-title">
+      <div class="card-head">
+        <h2 id="setup-title" class="marker"> الإعداد الأولي</h2>
+      </div>
+      <p class="small muted">أنشئ ملف <code>.env</code> في جذر المشروع بهذه القيم الدنيا:</p>
+      <pre lang="en" dir="ltr" style="background:var(--board-deep); color:var(--board-ink); padding:1rem; border-radius:8px; overflow:auto; text-align:left; font-size:.82rem; line-height:1.7"><code>SECRET_KEY=change-me-to-a-long-random-string
+GEMINI_API_KEY=your-key
+DATABASE_URL=sqlite:///instance/app.db</code></pre>
+      <div class="btn-row">
+        <button class="btn btn--ghost btn--sm" type="button"
+                data-copy="SECRET_KEY=change-me-to-a-long-random-string&#10;GEMINI_API_KEY=your-key&#10;DATABASE_URL=sqlite:///instance/app.db">
+          {{ icon('copy') }} نسخ القالب
+        </button>
+        <a class="btn btn--ghost btn--sm" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">
+          {{ icon('external') }} الحصول على مفتاح
+        </a>
+      </div>
+    </section>
+
+    <section class="card reveal">
+      <h2 class="marker"> عن النسخة</h2>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><th scope="row">الإصدار</th><td class="num">{{ diagnostics.version }}</td></tr>
+            <tr><th scope="row">Python</th><td class="num">{{ diagnostics.python }}</td></tr>
+            <tr><th scope="row">المادة الافتراضية</th><td>الإيقاظ العلمي</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted" style="margin-block-start:.8rem">
+        <a href="{{ url_for('main.about') }}">عن المنصة وحدود الاستعمال</a>
+      </p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

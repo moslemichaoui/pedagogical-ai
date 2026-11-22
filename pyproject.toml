@@ -1,0 +1,47 @@
+[project]
+name = "pedagogical-ai"
+version = "3.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "flask==2.3.3",
+    "flask-sqlalchemy==3.0.5",
+    "python-dotenv==1.0.0",
+    "pymupdf>=1.26.0",
+    "python-docx>=1.1.2",
+    "chromadb>=0.5.23",
+    "google-genai>=1.5.0",
+    "pydantic>=2.0.0",
+    "gunicorn",
+]
+
+[tool.pytest.ini_options]
+# Root-level test_*.py files are standalone manual scripts, not pytest suites.
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+# Root-level test_*.py files and scripts/test_*.py are standalone manual
+# diagnostics. Keep them untouched; lint and test the maintained suite instead.
+extend-exclude = [
+    "test_api.py",
+    "test_api_exercises.py",
+    "test_documents.py",
+    "test_exercises.py",
+    "test_full_flow.py",
+    "test_gemini.py",
+    "test_gemini2.py",
+    "test_lesson.py",
+    "test_lesson_rag.py",
+    "test_rag.py",
+    "scripts/test_lesson_generation.py",
+    "scripts/test_phase4_knowledge_base.py",
+    "scripts/test_phase5_exercises.py",
+    "scripts/test_rag_ingest.py",
+    "scripts/verify_truth.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]

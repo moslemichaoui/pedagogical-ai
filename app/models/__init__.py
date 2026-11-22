@@ -1,12 +1,24 @@
 """SQLAlchemy models for the Pedagogical AI platform."""
-from .model import User, Document, DocumentChunk, Lesson, Exercise, Assessment, GenerationRequest
+from .model import (
+    Assessment,
+    Document,
+    DocumentChunk,
+    Exercise,
+    GenerationRequest,
+    GenerationRun,
+    Lesson,
+    User,
+    utcnow,
+)
 
 __all__ = [
-    'User',
-    'Document',
-    'DocumentChunk',
-    'Lesson',
-    'Exercise',
-    'Assessment',
-    'GenerationRequest',
+    "Assessment",
+    "Document",
+    "DocumentChunk",
+    "Exercise",
+    "GenerationRequest",
+    "GenerationRun",
+    "Lesson",
+    "User",
+    "utcnow",
 ]

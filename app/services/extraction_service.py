@@ -1,187 +1,199 @@
-"""Service for document extraction with validation and safety checks."""
+"""Safe document text extraction for PDF, DOCX and TXT files."""
+from __future__ import annotations
+
+import hashlib
+import logging
 import os
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
+
+from app.utils.config_values import config_value
+from app.utils.text import clean_text
+
+logger = logging.getLogger(__name__)
 
 
 class ExtractionService:
-    """Handles safe document text extraction with validation."""
+    """Validate and extract text from teacher-uploaded documents."""
 
-    SAFE_EXTENSIONS = {'.pdf', '.docx', '.txt'}
-    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
-    MAX_TEXT_LENGTH = 10 * 1024 * 1024  # 10 MB of text
+    SAFE_EXTENSIONS = {".pdf", ".docx", ".txt"}
+    MAX_FILE_SIZE = 25 * 1024 * 1024
+    MAX_TEXT_LENGTH = 8 * 1024 * 1024
 
     @staticmethod
-    def validate_file(file_path: str) -> dict:
-        """Validate a file before extraction."""
-        if not os.path.exists(file_path):
-            return {'valid': False, 'error': 'File not found'}
-
-        if not os.path.isfile(file_path):
-            return {'valid': False, 'error': 'Not a file'}
-
-        file_size = os.path.getsize(file_path)
-        if file_size > ExtractionService.MAX_FILE_SIZE:
-            return {'valid': False, 'error': f'File too large: {file_size} bytes'}
-
-        ext = Path(file_path).suffix.lower()
-        if ext not in ExtractionService.SAFE_EXTENSIONS:
-            return {'valid': False, 'error': f'Unsupported extension: {ext}'}
-
-        if '..' in Path(file_path).parts:
-            return {'valid': False, 'error': 'Path traversal detected'}
-
-        return {'valid': True, 'error': None}
+    def validate_file(file_path: str) -> Dict[str, Any]:
+        path = Path(file_path)
+        if not path.exists():
+            return {"valid": False, "error": "الملف غير موجود."}
+        if not path.is_file():
+            return {"valid": False, "error": "المسار لا يشير إلى ملف."}
+        if path.stat().st_size == 0:
+            return {"valid": False, "error": "الملف فارغ."}
+        if path.stat().st_size > ExtractionService.MAX_FILE_SIZE:
+            limit = ExtractionService.MAX_FILE_SIZE // (1024 * 1024)
+            return {"valid": False, "error": f"حجم الملف يتجاوز {limit} ميغابايت."}
+        if path.suffix.lower() not in ExtractionService.SAFE_EXTENSIONS:
+            allowed = "، ".join(sorted(ext.lstrip(".").upper() for ext in ExtractionService.SAFE_EXTENSIONS))
+            return {"valid": False, "error": f"صيغة غير مدعومة. الصيغ المقبولة: {allowed}."}
+        return {"valid": True, "error": None}
 
     @staticmethod
     def sanitize_filename(filename: str) -> str:
-        """Sanitize a filename to prevent path traversal."""
-        basename = os.path.basename(filename)
-        sanitized = re.sub(r'[^\w\s\-.]', '', basename, flags=re.UNICODE)
-        sanitized = sanitized.replace(' ', '_')
-        if len(sanitized) > 255:
-            sanitized = sanitized[:255]
-        return sanitized
+        basename = os.path.basename(filename or "")
+        sanitized = re.sub(r"[^\w\u0600-\u06FF\s\-.()]", "", basename, flags=re.UNICODE)
+        sanitized = re.sub(r"\s+", "_", sanitized).strip("._")
+        return sanitized[:180]
 
     @staticmethod
-    def extract_text(file_path: str) -> dict:
-        """Extract text from a document file safely.
+    def checksum(file_path: str) -> str:
+        digest = hashlib.sha256()
+        with open(file_path, "rb") as handle:
+            for block in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(block)
+        return digest.hexdigest()
 
-        Returns:
-            dict with 'text', 'pages', 'page_texts', optional metadata, or 'error'
-        """
+    @staticmethod
+    def extract_text(file_path: str) -> Dict[str, Any]:
         validation = ExtractionService.validate_file(file_path)
-        if not validation['valid']:
-            return {'error': validation['error'], 'text': '', 'pages': [], 'page_texts': []}
-
-        ext = Path(file_path).suffix.lower()
-
-        if ext == '.pdf':
+        if not validation["valid"]:
+            return {"error": validation["error"], "text": "", "pages": [], "page_texts": []}
+        suffix = Path(file_path).suffix.lower()
+        if suffix == ".pdf":
             return ExtractionService._extract_pdf(file_path)
-        if ext == '.docx':
+        if suffix == ".docx":
             return ExtractionService._extract_docx(file_path)
-        if ext == '.txt':
-            return ExtractionService._extract_txt(file_path)
-
-        return {'error': f'Unsupported file type: {ext}', 'text': '', 'pages': [], 'page_texts': []}
+        return ExtractionService._extract_txt(file_path)
 
     @staticmethod
-    def _limit_text(text: str) -> str:
-        if len(text) > ExtractionService.MAX_TEXT_LENGTH:
-            return text[:ExtractionService.MAX_TEXT_LENGTH]
-        return text
+    def _limit(text: str) -> str:
+        return text[: ExtractionService.MAX_TEXT_LENGTH]
 
     @staticmethod
-    def _extract_pdf(file_path: str) -> dict:
-        """Extract text from a PDF file using PyMuPDF (`import fitz`)."""
+    def _extract_pdf(file_path: str) -> Dict[str, Any]:
         try:
             import fitz  # PyMuPDF
-        except ImportError as e:
+        except ImportError:
             return {
-                'error': 'PDF extraction failed: pymupdf is not installed',
-                'text': '',
-                'pages': [],
-                'page_texts': [],
+                "error": "استخراج PDF غير متاح: حزمة pymupdf غير مثبّتة.",
+                "text": "",
+                "pages": [],
+                "page_texts": [],
             }
-
         try:
-            doc = fitz.open(file_path)
-            page_texts = []
-
-            for i in range(len(doc)):
-                page = doc.load_page(i)
-                page_text = page.get_text()
-                if page_text.strip():
-                    page_texts.append({
-                        'page_number': i + 1,
-                        'text': page_text.strip(),
-                    })
-
-            doc.close()
-
-            text = ExtractionService._limit_text(
-                "\n\n".join(item['text'] for item in page_texts)
-            )
-            pages = [item['page_number'] for item in page_texts]
-
+            document = fitz.open(file_path)
+            page_texts: List[Dict[str, Any]] = []
+            for index in range(len(document)):
+                text = document.load_page(index).get_text("text")
+                if text and text.strip():
+                    page_texts.append({"page_number": index + 1, "text": text.strip()})
+            document.close()
+            if not page_texts:
+                return {
+                    "error": "الملف لا يحتوي نصاً قابلاً للاستخراج (قد يكون صورة ممسوحة).",
+                    "text": "",
+                    "pages": [],
+                    "page_texts": [],
+                }
+            return ExtractionService._result(page_texts)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("PDF extraction failed: %s", exc)
             return {
-                'text': text,
-                'pages': pages,
-                'page_texts': page_texts,
-                'subject': None,
-                'language': 'ar',
-                'level': None,
-                'chapter': None,
+                "error": "تعذّر استخراج نص PDF. تأكّد من أن الملف سليم وغير محمي بكلمة مرور.",
+                "text": "",
+                "pages": [],
+                "page_texts": [],
             }
-        except Exception as e:
-            return {'error': f'PDF extraction failed: {str(e)}', 'text': '', 'pages': [], 'page_texts': []}
 
     @staticmethod
-    def _extract_docx(file_path: str) -> dict:
-        """Extract text from a DOCX file using python-docx."""
+    def _extract_docx(file_path: str) -> Dict[str, Any]:
         try:
             from docx import Document as DocxDocument
         except ImportError:
             return {
-                'error': 'DOCX extraction failed: python-docx is not installed',
-                'text': '',
-                'pages': [],
-                'page_texts': [],
+                "error": "استخراج DOCX غير متاح: حزمة python-docx غير مثبّتة.",
+                "text": "",
+                "pages": [],
+                "page_texts": [],
             }
-
         try:
-            doc = DocxDocument(file_path)
-            page_map = {}
-
-            for i, paragraph in enumerate(doc.paragraphs):
-                if not paragraph.text.strip():
-                    continue
-                page_num = (i // 25) + 1
-                page_map.setdefault(page_num, [])
-                page_map[page_num].append(paragraph.text.strip())
-
-            page_texts = [
-                {'page_number': page_num, 'text': "\n\n".join(parts)}
-                for page_num, parts in sorted(page_map.items())
-            ]
-            if not page_texts:
-                page_texts = [{'page_number': 1, 'text': ''}]
-
-            text = ExtractionService._limit_text(
-                "\n\n".join(item['text'] for item in page_texts if item['text'])
-            )
-            pages = [item['page_number'] for item in page_texts if item['text']] or [1]
-
+            document = DocxDocument(file_path)
+            paragraphs = [p.text.strip() for p in document.paragraphs if p.text.strip()]
+            for table in document.tables:
+                for row in table.rows:
+                    cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                    if cells:
+                        paragraphs.append(" | ".join(cells))
+            if not paragraphs:
+                return {
+                    "error": "الملف لا يحتوي نصاً قابلاً للاستخراج.",
+                    "text": "",
+                    "pages": [],
+                    "page_texts": [],
+                }
+            page_texts = []
+            for start in range(0, len(paragraphs), 25):
+                page_texts.append(
+                    {
+                        "page_number": len(page_texts) + 1,
+                        "text": "\n\n".join(paragraphs[start : start + 25]),
+                    }
+                )
+            return ExtractionService._result(page_texts)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("DOCX extraction failed: %s", exc)
             return {
-                'text': text,
-                'pages': pages,
-                'page_texts': page_texts,
-                'subject': None,
-                'language': 'ar',
-                'level': None,
-                'chapter': None,
+                "error": "تعذّر استخراج نص DOCX. تأكّد من أن الملف سليم وغير تالف.",
+                "text": "",
+                "pages": [],
+                "page_texts": [],
             }
-        except Exception as e:
-            return {'error': f'DOCX extraction failed: {str(e)}', 'text': '', 'pages': [], 'page_texts': []}
 
     @staticmethod
-    def _extract_txt(file_path: str) -> dict:
-        """Extract text from a TXT file."""
+    def _extract_txt(file_path: str) -> Dict[str, Any]:
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                text = ExtractionService._limit_text(f.read())
-
-            page_texts = [{'page_number': 1, 'text': text.strip()}] if text.strip() else []
-
+            raw = Path(file_path).read_bytes()
+        except OSError as exc:
+            logger.warning("Text file read failed: %s", exc)
+            return {"error": "تعذّر قراءة الملف النصي.", "text": "", "pages": [], "page_texts": []}
+        text = ""
+        for encoding in ("utf-8-sig", "utf-8", "cp1256", "latin-1"):
+            try:
+                text = raw.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        if not text.strip():
             return {
-                'text': text,
-                'pages': [1] if text.strip() else [],
-                'page_texts': page_texts,
-                'subject': None,
-                'language': 'ar',
-                'level': None,
-                'chapter': None,
+                "error": "الملف النصي فارغ.",
+                "text": "",
+                "pages": [],
+                "page_texts": [],
             }
-        except Exception as e:
-            return {'error': f'TXT extraction failed: {str(e)}', 'text': '', 'pages': [], 'page_texts': []}
+        return ExtractionService._result([{"page_number": 1, "text": text.strip()}])
+
+    @staticmethod
+    def _result(page_texts: List[Dict[str, Any]]) -> Dict[str, Any]:
+        cleaned_pages = [
+            {"page_number": page["page_number"], "text": clean_text(page["text"])}
+            for page in page_texts
+            if clean_text(page.get("text"))
+        ]
+        text = ExtractionService._limit("\n\n".join(page["text"] for page in cleaned_pages))
+        return {
+            "text": text,
+            "pages": [page["page_number"] for page in cleaned_pages],
+            "page_texts": cleaned_pages,
+            "language": "ar",
+            "subject": None,
+            "level": None,
+            "chapter": None,
+        }
+
+    @staticmethod
+    def guess_metadata(filename: str) -> Dict[str, Optional[str]]:
+        """Infer subject/level hints from a filename, without trusting it."""
+        stem = Path(filename or "").stem
+        subject = next((item for item in config_value("SUBJECTS", []) if item in stem), None)
+        level = next((item for item in config_value("LEVELS", []) if item in stem), None)
+        return {"subject": subject, "level": level}
