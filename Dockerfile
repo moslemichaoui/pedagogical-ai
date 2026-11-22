@@ -47,4 +47,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD ["python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5000/healthz', timeout=3).status == 200 else 1)"]
 
-CMD ["flask", "--app", "run:app", "run", "--host", "0.0.0.0", "--port", "5000"]
+# Railway/Render inject PORT; shell form allows ${PORT} expansion.
+CMD gunicorn --bind 0.0.0.0:${PORT:-5000} --workers ${WEB_CONCURRENCY:-1} --timeout 120 --access-logfile - --error-logfile - run:app
