@@ -1,6 +1,6 @@
 # Architecture — Pedagogical AI
 
-> Implementation reference for app version **3.1.1** (`APP_VERSION` in `app/__init__.py`).
+> Implementation reference for app version **3.1.2** (`APP_VERSION` in `app/__init__.py`).
 > Written in English; user-facing strings are Arabic. For the teacher-facing
 > behaviour see [`PRODUCT.md`](PRODUCT.md), for the UI see [`DESIGN.md`](DESIGN.md).
 
@@ -207,7 +207,7 @@ Every lesson generation attempt writes a `GenerationRun` row. `AnalyticsService`
 ## 15. Known implementation notes
 
 - `PROJECT_SPEC.md` and parts of the old docs describe a v2 plan (French UI, Bootstrap, `rag/` folder); the shipped app is Arabic-first, framework-free, and uses `app/ai/` + `app/services/`.
-- `pyproject.toml` declares version `0.1.0` while the app reports `3.1.1`; packaging metadata has not caught up.
+- `pyproject.toml` declares version `0.1.0` while the app reports `3.1.2`; packaging metadata has not caught up.
 - `MAX_UPLOAD_MB` can be raised above 25, but `ExtractionService.MAX_FILE_SIZE` still rejects files over 25 MB.
 - Root-level `test_*.py` files are manual scripts, not pytest tests; they hit APIs at import time.
 - `static/css/style.css` is a leftover sidebar stylesheet; active pages load only `static/css/app.css`.

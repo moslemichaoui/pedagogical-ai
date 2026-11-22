@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from flask import Flask
@@ -22,6 +23,16 @@ def test_public_pages_render_arabic_rtl(client, path):
     assert 'id="main"' in html
     assert 'tabindex="-1"' in html
     assert "تجاوز إلى المحتوى" in html
+
+
+def test_hidden_overlay_cannot_cover_create_page(client):
+    """Regression: `display: grid` on .gen-overlay used to override [hidden]."""
+    css = (
+        Path(__file__).resolve().parents[1] / "static" / "css" / "app.css"
+    ).read_text(encoding="utf-8")
+    assert "[hidden] { display: none !important; }" in css
+    html = client.get("/create").get_data(as_text=True)
+    assert 'id="gen-overlay" hidden' in html
 
 
 def test_healthz_has_expected_shape_and_security_headers(client):

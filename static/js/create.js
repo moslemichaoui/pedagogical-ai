@@ -162,11 +162,18 @@
     if (submit) submit.disabled = true;
     startProgress();
 
+    /* Never leave the modal spinner up forever if the server stalls. */
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const timeoutId = controller
+      ? window.setTimeout(() => controller.abort(), 180000)
+      : null;
+
     try {
       const response = await fetch(form.dataset.endpoint, {
         method: "POST",
         body: new FormData(form),
         headers: { Accept: "application/json" },
+        ...(controller ? { signal: controller.signal } : {}),
       });
       const payload = await response.json().catch(() => ({}));
 
@@ -193,8 +200,16 @@
     } catch (error) {
       stopProgress();
       if (submit) submit.disabled = false;
-      showError(error.message);
-      window.App.toast(error.message, "error");
+      const message =
+        error && error.name === "AbortError"
+          ? "استغرق التوليد وقتاً طويلاً. أعد المحاولة وتأكّد من ضبط مفتاح Gemini."
+          : (error && error.message) || "تعذّر توليد الجذاذة. أعد المحاولة.";
+      showError(message);
+      if (window.App && typeof window.App.toast === "function") {
+        window.App.toast(message, "error");
+      }
+    } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
     }
   });
 })();
